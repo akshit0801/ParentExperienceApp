@@ -39,9 +39,13 @@ create policy "anon can insert game events"
 
 -- ----------------------------------------------------------------------------
 -- session_summary — one row per playthrough, reconstructed from the events
--- above. Convenient for browsing in Table Editor; not exposed to anon.
+-- above, with one column per question. Convenient for browsing in Table
+-- Editor; not exposed to anon. Dropped and recreated (not CREATE OR REPLACE)
+-- because Postgres refuses to rename/remove view columns in place.
 -- ----------------------------------------------------------------------------
-create or replace view public.session_summary as
+drop view if exists public.session_summary;
+
+create view public.session_summary as
 select
   started.session_id,
   started.started_at,
@@ -49,7 +53,21 @@ select
   started.referrer,
   completed.completed_at,
   coalesce(completed.completed_at is not null, false) as completed,
-  completed.final_responses,
+  completed.worry_choice,
+  completed.r1_choice,
+  completed.r1_correct,
+  completed.r1_ms,
+  completed.r2_choice,
+  completed.r2_correct,
+  completed.r2_ms,
+  completed.r3_choice,
+  completed.r3_correct,
+  completed.r3_ms,
+  completed.r4_choice,
+  completed.r4_correct,
+  completed.r4_ms,
+  completed.reflection_choice,
+  completed.score,
   closed.closed_at,
   closed.closed_screen
 from
@@ -65,7 +83,23 @@ from
   ) started
   left join (
     select distinct on (session_id)
-      session_id, created_at as completed_at, payload as final_responses
+      session_id,
+      created_at as completed_at,
+      payload ->> 'worry' as worry_choice,
+      payload -> 'r1' ->> 'choice' as r1_choice,
+      (payload -> 'r1' ->> 'correct')::boolean as r1_correct,
+      (payload -> 'r1' ->> 'ms')::int as r1_ms,
+      payload -> 'r2' ->> 'choice' as r2_choice,
+      (payload -> 'r2' ->> 'correct')::boolean as r2_correct,
+      (payload -> 'r2' ->> 'ms')::int as r2_ms,
+      payload -> 'r3' ->> 'choice' as r3_choice,
+      (payload -> 'r3' ->> 'correct')::boolean as r3_correct,
+      (payload -> 'r3' ->> 'ms')::int as r3_ms,
+      payload -> 'r4' ->> 'choice' as r4_choice,
+      (payload -> 'r4' ->> 'correct')::boolean as r4_correct,
+      (payload -> 'r4' ->> 'ms')::int as r4_ms,
+      payload ->> 'reflection' as reflection_choice,
+      (payload ->> 'score')::int as score
     from public.game_events
     where event_type = 'session_complete'
     order by session_id, created_at desc
@@ -90,8 +124,7 @@ from
 --   where not completed group by closed_screen order by count(*) desc;
 --
 -- Average score of completed sessions:
---   select avg((final_responses ->> 'score')::int) from public.session_summary
---   where completed;
+--   select avg(score) from public.session_summary where completed;
 --
 -- Per-question breakdown (e.g. how often each round is answered correctly):
 --   select screen, payload ->> 'correct' as correct, count(*)
