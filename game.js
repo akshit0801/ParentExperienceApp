@@ -2,6 +2,8 @@
 // State machine: goTo(n) shows screen n (0-8) and runs its onEnter hook.
 // Screens: 0 title, 1 worry, 2 round1, 3 round2, 4 round3, 5 round4, 6 score, 7 reflection, 8 close.
 // All game state lives in the in-memory `state` object below — no localStorage/sessionStorage.
+// Usage analytics (session_start/question_answered/session_complete/session_closed) are posted
+// to Supabase — see the "Usage analytics" block below and supabase/schema.sql for the table + RLS.
 
 const WEBHOOK_URL = ""; // optional POST target for the reflection screen — left empty, fails silently.
 const SESSION_SECONDS = 180; // 3-minute overall timer shown top-right.
@@ -21,6 +23,64 @@ let sessionInterval = null;
 let sessionRemaining = SESSION_SECONDS;
 let voiceMuted = false;
 let currentAudioFile = null;
+
+/* =========================================================================
+   Usage analytics — anonymous, append-only events posted straight to
+   Supabase. Uses only the public "publishable" key (safe to expose — it is
+   locked to INSERT-only via a Row Level Security policy, see
+   supabase/schema.sql). No secret keys, no server, no localStorage: the
+   session id lives only in memory for the current playthrough.
+   ========================================================================= */
+const SUPABASE_URL = "https://bdjyrgnwedpkrrclzxwe.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_h-ZVHHb7WXe-XimcyaKdCA_YQwAAL1I";
+const ANALYTICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/game_events`;
+const SCREEN_NAMES = ["title", "worry", "round1", "round2", "round3", "round4", "score", "reflection", "close"];
+const ROUND_SCREEN_NAMES = { 1: "round1", 2: "round2", 3: "round3", 4: "round4" };
+
+let sessionId = null;
+let sessionEnded = false;
+
+function makeSessionId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+function trackEvent(eventType, screen, payload) {
+  if (!sessionId) return;
+  fetch(ANALYTICS_ENDPOINT, {
+    method: "POST",
+    keepalive: true, // survives page unload — used for the session_closed beacon
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      session_id: sessionId,
+      event_type: eventType,
+      screen: screen || null,
+      payload: payload || {},
+      user_agent: navigator.userAgent,
+    }),
+  }).catch(() => {});
+}
+
+function trackSessionClosed() {
+  if (!sessionId || sessionEnded) return;
+  sessionEnded = true;
+  trackEvent("session_closed", SCREEN_NAMES[state.current] || null, {
+    ...state.responses,
+    screenIndex: state.current,
+  });
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") trackSessionClosed();
+});
+window.addEventListener("pagehide", trackSessionClosed);
 
 /* =========================================================================
    Sound effects — synthesized with WebAudio, no files required.
@@ -191,6 +251,7 @@ function recordRoundAnswer(roundNum, choice, correct, ms) {
   state.responses["r" + roundNum] = { choice, correct, ms };
   if (correct) state.roundScore++;
   updatePips();
+  trackEvent("question_answered", ROUND_SCREEN_NAMES[roundNum], { choice, correct, ms, auto: choice === null });
 }
 
 /* =========================================================================
@@ -244,6 +305,9 @@ function attachScreen0(el) {
   el.querySelector("#s0-cta").addEventListener("click", () => {
     sfx.click();
     state = { responses: {}, roundScore: 0, current: 0 };
+    sessionId = makeSessionId();
+    sessionEnded = false;
+    trackEvent("session_start", "title", { referrer: document.referrer || null });
     startSessionTimer();
     goTo(1);
   });
@@ -271,6 +335,7 @@ function attachScreen1(el) {
       buttons.forEach((b) => (b.disabled = true));
       btn.classList.add("correct");
       state.responses.worry = btn.dataset.id;
+      trackEvent("question_answered", "worry", { choice: btn.dataset.id });
       el.querySelector("#s1-ack").classList.remove("hidden");
       speakLine("s_worry_ack");
       setTimeout(() => goTo(2), 1200);
@@ -644,6 +709,9 @@ function attachScreen7(el) {
       state.responses.score = state.roundScore;
       state.responses.ts = new Date().toISOString();
       sendResults();
+      trackEvent("question_answered", "reflection", { choice: btn.dataset.id });
+      trackEvent("session_complete", "reflection", state.responses);
+      sessionEnded = true;
       el.querySelector("#s7-continue").classList.remove("hidden");
     });
   });
@@ -741,6 +809,8 @@ function resetGame() {
   clearInterval(sessionInterval);
   stopNarration();
   state = { responses: {}, roundScore: 0, current: 0 };
+  sessionId = null;
+  sessionEnded = false;
   buildAllScreens();
   goTo(0);
 }
