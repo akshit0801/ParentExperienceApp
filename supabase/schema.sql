@@ -14,7 +14,10 @@ create table if not exists public.game_events (
   id bigint generated always as identity primary key,
   session_id uuid not null,
   event_type text not null check (
-    event_type in ('session_start', 'question_answered', 'session_complete', 'session_closed')
+    event_type in (
+      'session_start', 'question_answered', 'session_complete', 'session_closed',
+      'kid_game_started', 'kid_game_answered', 'kid_game_cfu'
+    )
   ),
   screen text,
   payload jsonb not null default '{}'::jsonb,
@@ -113,6 +116,55 @@ from
   ) closed using (session_id);
 
 -- ----------------------------------------------------------------------------
+-- kid_game_summary — one row per "Can You Spot the Fake AI?" playthrough
+-- (the kids mini-game launched from the close screen's "Your child's turn"
+-- button), reconstructed from the three kid_game_* event types below.
+-- session_id matches session_summary.session_id — the browser keeps the
+-- same session across the parent→child handoff — so the two views can be
+-- joined to see e.g. "did this parent's child also play, and how did they
+-- do." Dropped and recreated for the same reason as session_summary above.
+-- ----------------------------------------------------------------------------
+drop view if exists public.kid_game_summary;
+
+create view public.kid_game_summary as
+select
+  started.session_id,
+  started.started_at,
+  answered.answered_at,
+  answered.answers,
+  answered.score,
+  answered.score_max,
+  answered.timed_out,
+  cfu.cfu_choice,
+  cfu.cfu_at
+from
+  (
+    select session_id, min(created_at) as started_at
+    from public.game_events
+    where event_type = 'kid_game_started'
+    group by session_id
+  ) started
+  left join (
+    select distinct on (session_id)
+      session_id,
+      created_at as answered_at,
+      payload -> 'answers' as answers,
+      (payload ->> 'score')::int as score,
+      (payload ->> 'scoreMax')::int as score_max,
+      coalesce((payload ->> 'timedOut')::boolean, false) as timed_out
+    from public.game_events
+    where event_type = 'kid_game_answered'
+    order by session_id, created_at desc
+  ) answered using (session_id)
+  left join (
+    select distinct on (session_id)
+      session_id, created_at as cfu_at, payload ->> 'choice' as cfu_choice
+    from public.game_events
+    where event_type = 'kid_game_cfu'
+    order by session_id, created_at desc
+  ) cfu using (session_id);
+
+-- ----------------------------------------------------------------------------
 -- Handy queries once data is flowing (run these in the SQL Editor):
 --
 -- Completion rate:
@@ -131,4 +183,15 @@ from
 --   from public.game_events
 --   where event_type = 'question_answered' and screen like 'round%'
 --   group by screen, correct order by screen;
+--
+-- Of parents who finished, how many handed off to their child:
+--   select count(*) filter (where k.session_id is not null) * 100.0 / count(*) as handoff_pct
+--   from public.session_summary s
+--   left join public.kid_game_summary k using (session_id)
+--   where s.completed;
+--
+-- Average kid score, and how often "Not sure" (confused) shows up:
+--   select avg(score::numeric / score_max) as avg_kid_score_pct,
+--          avg((select count(*) from jsonb_each_text(answers) a where a.value = 'confused')) as avg_confused_per_play
+--   from public.kid_game_summary where score is not null;
 -- ----------------------------------------------------------------------------

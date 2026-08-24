@@ -1,20 +1,22 @@
 @import url("Fonts/fonts.css");
 
 :root {
-  --bg: #0e1030;
-  --bg-2: #171a44;
-  --surface: #1e2150;
-  --surface-2: #262a63;
-  --ink: #eef0ff;
-  --muted: #a7ade0;
+  --bg: #0b0c16;
+  --bg-2: #14151f;
+  --surface: #1a1b28;
+  --surface-2: #23243a;
+  --ink: #f0f1f7;
+  --muted: #9a9db8;
   --brand: #6c5ce7;
   --brand-2: #8b7cff;
-  --accent: #ffc24b;
-  --good: #34d399;
-  --bad: #fb7185;
-  --line: rgba(255, 255, 255, 0.1);
+  --accent: #d9a954;
+  --accent-2: #c1913f;
+  --warn: #e0a845;
+  --good: #2fbf8f;
+  --bad: #e5646f;
+  --line: rgba(255, 255, 255, 0.09);
   --radius: 20px;
-  --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   --fade: 240ms;
 }
 
@@ -42,7 +44,8 @@ body {
 }
 
 h1, h2, h3 {
-  font-family: "Poppins", "Sora", sans-serif;
+  font-family: "Sora", sans-serif;
+  letter-spacing: -0.01em;
   margin: 0 0 0.4em;
 }
 
@@ -50,6 +53,13 @@ button {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
+}
+
+.icon {
+  display: block;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
 }
 
 /* ---------- Phone frame ---------- */
@@ -167,13 +177,6 @@ button {
   border-color: var(--bad);
 }
 
-#brand-logo {
-  height: 26px;
-  width: auto;
-  display: block;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
-}
-
 /* ---------- Screens ---------- */
 #app {
   position: relative;
@@ -254,7 +257,7 @@ button {
 
 .title-hero {
   font-size: 34px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -282,6 +285,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: 56px;
   border-radius: 16px;
   border: none;
@@ -301,13 +305,25 @@ button {
 }
 
 .btn-amber {
-  background: linear-gradient(180deg, var(--accent), #f0a621);
-  color: #241500;
-  box-shadow: 0 10px 24px rgba(255, 194, 75, 0.35);
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  color: #241a08;
+  box-shadow: 0 10px 24px rgba(217, 169, 84, 0.3);
 }
 
 .btn-amber:hover {
-  box-shadow: 0 14px 30px rgba(255, 194, 75, 0.5);
+  box-shadow: 0 14px 30px rgba(217, 169, 84, 0.45);
+}
+
+.btn-amber:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none !important;
+}
+
+.btn-amber:disabled:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-ghost {
@@ -376,7 +392,23 @@ button {
   color: var(--brand-2);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
+}
+
+.round-banner-icon {
+  display: flex;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.round-banner-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.round-banner-label {
+  flex: 1;
 }
 
 .timer-ring-wrap {
@@ -406,8 +438,18 @@ button {
   transition: stroke-dashoffset 200ms linear, stroke 200ms ease;
 }
 
+.timer-ring-fill.warn {
+  stroke: var(--warn);
+}
+
 .timer-ring-fill.urgent {
   stroke: var(--bad);
+  animation: ring-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes ring-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(229, 100, 111, 0)); }
+  50% { filter: drop-shadow(0 0 6px rgba(229, 100, 111, 0.7)); }
 }
 
 .timer-ring-num {
@@ -418,6 +460,15 @@ button {
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
+  transition: color 200ms ease;
+}
+
+.timer-ring-num.warn {
+  color: var(--warn);
+}
+
+.timer-ring-num.urgent {
+  color: var(--bad);
 }
 
 /* ---------- Round 1 portrait cards ---------- */
@@ -650,8 +701,8 @@ button {
 
 /* ---------- Score screen ---------- */
 .score-big {
-  font-family: "Poppins", sans-serif;
-  font-weight: 800;
+  font-family: "Sora", sans-serif;
+  font-weight: 700;
   font-size: 34px;
   white-space: nowrap;
 }
@@ -682,8 +733,33 @@ button {
   border-color: var(--brand-2);
 }
 
-.skill-emoji {
-  font-size: 26px;
+.skill-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 124, 255, 0.14);
+  color: var(--brand-2);
+}
+
+.skill-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.score-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 10px;
+  color: var(--accent);
+}
+
+.score-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .skill-title {
@@ -831,6 +907,560 @@ button {
 .mono-badge.bad {
   background: var(--bad);
   color: #3a0710;
+}
+
+/* ---------- Image fallback (broken/missing asset) ---------- */
+.img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.img-fallback .icon {
+  width: 40px;
+  height: 40px;
+}
+
+/* ---------- Details form (name / grade / phone / state / city) ---------- */
+.details-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+}
+
+.field-row .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 15px;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9db8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 36px;
+}
+
+.field select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field select option {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.field input::placeholder {
+  color: var(--muted);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--brand-2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.phone-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.phone-input-wrap:focus-within {
+  border-color: var(--brand-2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.phone-prefix {
+  padding: 0 0 0 14px;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.phone-input-wrap input {
+  border: none;
+  background: none;
+  min-height: 48px;
+}
+
+.phone-input-wrap input:focus {
+  border: none;
+  background: none;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field-hint.invalid {
+  color: var(--bad);
+}
+
+.field-hint.valid {
+  color: var(--good);
+}
+
+/* ---------- Mission map sheet ---------- */
+.mm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(5, 6, 15, 0);
+  transition: background 260ms ease;
+}
+
+.mm-overlay.open {
+  background: rgba(5, 6, 15, 0.6);
+}
+
+.mm-sheet {
+  width: 100%;
+  max-height: 88%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg));
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.5);
+  transform: translateY(100%);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mm-overlay.open .mm-sheet {
+  transform: translateY(0);
+}
+
+.mm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 14px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.mm-title {
+  font-family: "Sora", sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.mm-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.mm-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mm-body {
+  overflow-y: auto;
+  padding: 10px 16px 24px;
+}
+
+.mm-grade {
+  border-bottom: 1px solid var(--line);
+}
+
+.mm-grade-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-family: "Sora", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px 4px;
+  cursor: pointer;
+}
+
+.mm-grade-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.mm-grade-count .icon {
+  width: 14px;
+  height: 14px;
+  transition: transform 200ms ease;
+}
+
+.mm-grade.expanded .mm-grade-count .icon {
+  transform: rotate(180deg);
+}
+
+.mm-grade-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 240ms ease;
+}
+
+.mm-grade-units {
+  overflow: hidden;
+}
+
+.mm-grade.expanded .mm-grade-body {
+  grid-template-rows: 1fr;
+}
+
+.mm-unit {
+  padding: 10px 4px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.mm-unit:first-child {
+  border-top: none;
+}
+
+.mm-unit-domain {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.mm-unit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  font-size: 13px;
+  padding: 3px 0;
+}
+
+.mm-unit-name {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.mm-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.mm-tag-group {
+  color: var(--brand-2);
+  border-color: rgba(139, 124, 255, 0.4);
+}
+
+.mm-skill {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------- Kids mini-game · "Can You Spot the Fake AI?" ---------- */
+.kg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-image: linear-gradient(180deg, rgba(10, 11, 35, 0.55), rgba(10, 11, 35, 0.88)), var(--ambient-url);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--fade) ease;
+}
+
+.kg-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.kg-body.screen-content {
+  padding-top: 56px;
+}
+
+.kg-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(14, 16, 48, 0.55);
+  backdrop-filter: blur(6px);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.kg-progress {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.kg-deck {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 3/4;
+  margin: 0 auto;
+}
+
+.kg-swipe-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 3px solid var(--line);
+  background: var(--surface);
+  cursor: grab;
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+/* The card's transform is fully JS-driven during drag/fly-away — the
+   shared .glass-tile hover/active bulge would otherwise fight it (a stray
+   lift-and-scale when a short drag springs back, or a 1px flash on
+   pointerdown before the first pointermove). */
+.kg-deck .kg-swipe-card:hover,
+.kg-deck .kg-swipe-card:active {
+  transform: none;
+}
+
+.kg-swipe-card:active {
+  cursor: grabbing;
+}
+
+.kg-swipe-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.kg-stamp {
+  position: absolute;
+  top: 18px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 3px solid;
+  font-family: "Sora", sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kg-stamp-real {
+  left: 16px;
+  color: var(--good);
+  border-color: var(--good);
+  transform: rotate(-12deg);
+}
+
+.kg-stamp-fake {
+  right: 16px;
+  color: var(--bad);
+  border-color: var(--bad);
+  transform: rotate(12deg);
+}
+
+.kg-swipe-hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.kg-swipe-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.kg-action-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 150ms ease;
+}
+
+.kg-action-btn:active {
+  transform: scale(0.95);
+}
+
+.kg-action-btn .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.kg-action-fake {
+  color: var(--bad);
+}
+
+.kg-action-real {
+  color: var(--good);
+}
+
+.kg-action-confused {
+  color: var(--warn);
+}
+
+.kg-reveal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.kg-reveal-thumb {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.kg-reveal-tag {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.kg-reveal-tag.fake {
+  color: var(--bad);
+}
+
+.kg-reveal-tag.real {
+  color: var(--good);
+}
+
+.kg-reveal-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.kg-mark {
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.kg-mark.good {
+  background: var(--good);
+  color: #04241a;
+}
+
+.kg-mark.bad {
+  background: var(--bad);
+  color: #3a0710;
+}
+
+.kg-mark.muted {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
 }
 
 /* ---------- Misc ---------- */

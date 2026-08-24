@@ -1,6 +1,6 @@
 // game.js — "Could You Pass Your Kid's Class?"
-// State machine: goTo(n) shows screen n (0-8) and runs its onEnter hook.
-// Screens: 0 title, 1 worry, 2 round1, 3 round2, 4 round3, 5 round4, 6 score, 7 reflection, 8 close.
+// State machine: goTo(n) shows screen n (0-9) and runs its onEnter hook.
+// Screens: 0 title, 1 details, 2 worry, 3 round1, 4 round2, 5 round3, 6 round4, 7 score, 8 reflection, 9 close.
 // All game state lives in the in-memory `state` object below — no localStorage/sessionStorage.
 // Usage analytics (session_start/question_answered/session_complete/session_closed) are posted
 // to Supabase — see the "Usage analytics" block below and supabase/schema.sql for the table + RLS.
@@ -15,7 +15,45 @@ const pipsEl = document.getElementById("pips");
 const voiceBtn = document.getElementById("voice-btn");
 const sessionTimerEl = document.getElementById("session-timer");
 const sessionTimerText = sessionTimerEl.querySelector("span");
-const brandLogo = document.getElementById("brand-logo");
+
+/* =========================================================================
+   Icon library — hand-built line icons (no emoji), all single-colour via
+   currentColor so they inherit whatever text colour their container sets.
+   ========================================================================= */
+const ICONS = {
+  volumeOn:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>',
+  volumeOff:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>',
+  play:
+    '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>',
+  chevronDown:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>',
+  close:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+  search:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
+  eye:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+  chat:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>',
+  code:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>',
+  user:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
+  bag:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>',
+  target:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>',
+  check:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+  helpCircle:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+  bot:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3"></path><rect x="4" y="7" width="16" height="13" rx="3"></rect><line x1="9" y1="13" x2="9" y2="14"></line><line x1="15" y1="13" x2="15" y2="14"></line><path d="M4 13H2"></path><path d="M22 13h-2"></path></svg>',
+  sparkle:
+    '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"></path></svg>',
+};
 
 let screenEls = [];
 let activeRoundTimer = null;
@@ -34,7 +72,7 @@ let currentAudioFile = null;
 const SUPABASE_URL = "https://bdjyrgnwedpkrrclzxwe.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_h-ZVHHb7WXe-XimcyaKdCA_YQwAAL1I";
 const ANALYTICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/game_events`;
-const SCREEN_NAMES = ["title", "worry", "round1", "round2", "round3", "round4", "score", "reflection", "close"];
+const SCREEN_NAMES = ["title", "details", "worry", "round1", "round2", "round3", "round4", "score", "reflection", "close"];
 const ROUND_SCREEN_NAMES = { 1: "round1", 2: "round2", 3: "round3", 4: "round4" };
 
 let sessionId = null;
@@ -156,15 +194,14 @@ function speakLine(id) {
 /* =========================================================================
    Image helper — degrades to an emoji if a file is missing/unloadable.
    ========================================================================= */
-window.handleImgError = function (imgEl, emoji) {
+window.handleImgError = function (imgEl, iconKey) {
   const div = document.createElement("div");
   div.className = imgEl.className.replace(/\bcard-img\b/, "").trim() + " img-fallback";
-  div.style.cssText = "display:flex;align-items:center;justify-content:center;font-size:40px;width:100%;height:100%;";
-  div.textContent = emoji;
+  div.innerHTML = ICONS[iconKey] || ICONS.sparkle;
   imgEl.replaceWith(div);
 };
-function imgTag(src, emoji, cls) {
-  return `<img src="${encodeURI(src)}" class="${cls}" onerror="handleImgError(this,'${emoji}')" alt="">`;
+function imgTag(src, iconKey, cls) {
+  return `<img src="${encodeURI(src)}" class="${cls}" onerror="handleImgError(this,'${iconKey}')" alt="">`;
 }
 
 /* =========================================================================
@@ -204,7 +241,7 @@ function handleSessionTimeout() {
   if (!state.responses.r2) recordRoundAnswer(2, null, false, SESSION_SECONDS * 1000);
   if (!state.responses.r3) recordRoundAnswer(3, null, false, SESSION_SECONDS * 1000);
   if (!state.responses.r4) recordRoundAnswer(4, null, false, SESSION_SECONDS * 1000);
-  if (state.current < 6) goTo(6);
+  if (state.current < 7) goTo(7);
 }
 
 /* =========================================================================
@@ -225,8 +262,13 @@ function startRingTimer(screenEl, seconds, onExpire) {
     const ratio = remaining / seconds;
     fill.style.strokeDashoffset = `${circumference * (1 - ratio)}`;
     num.textContent = Math.ceil(remaining);
-    fill.classList.toggle("urgent", remaining <= 4);
-    if (remaining <= 4 && remaining > 0 && Math.floor(remaining * 2) !== Math.floor((remaining + 0.1) * 2)) sfx.tick();
+    const isUrgent = remaining <= seconds * 0.25;
+    const isWarn = !isUrgent && remaining <= seconds * 0.5;
+    fill.classList.toggle("warn", isWarn);
+    fill.classList.toggle("urgent", isUrgent);
+    num.classList.toggle("warn", isWarn);
+    num.classList.toggle("urgent", isUrgent);
+    if (isUrgent && remaining > 0 && Math.floor(remaining * 2) !== Math.floor((remaining + 0.1) * 2)) sfx.tick();
     if (remaining <= 0) {
       clearInterval(activeRoundTimer.interval);
       onExpire(Math.round(seconds * 1000));
@@ -258,7 +300,7 @@ function recordRoundAnswer(roundNum, choice, correct, ms) {
    Progress pips (4-segment, top bar centre) — one per round.
    ========================================================================= */
 function updatePips() {
-  const roundForScreen = { 2: 0, 3: 1, 4: 2, 5: 3 };
+  const roundForScreen = { 3: 0, 4: 1, 5: 2, 6: 3 };
   const pips = pipsEl.querySelectorAll(".pip");
   pips.forEach((pip, i) => {
     const answered = !!state.responses["r" + (i + 1)];
@@ -271,7 +313,7 @@ function updatePips() {
    Confetti burst (finale screen)
    ========================================================================= */
 function burstConfetti(container) {
-  const colors = ["#FFC24B", "#6C5CE7", "#8B7CFF", "#34D399", "#FB7185"];
+  const colors = ["#D9A954", "#F1D9A4", "#FFFFFF", "#B9A4FF"];
   for (let i = 0; i < 26; i++) {
     const piece = document.createElement("div");
     piece.className = "confetti-piece";
@@ -293,12 +335,12 @@ function renderScreen0() {
   return `
     <div class="screen-content center">
       <div class="grow"></div>
-      ${imgTag(ASSETS.skaiLogo, "✨", "hero-logo")}
+      ${imgTag(ASSETS.skaiLogo, "sparkle", "hero-logo")}
       <div class="eyebrow">SKAI Space</div>
       <h1 class="title-hero">${TITLE.title}</h1>
       <p class="subtitle">${TITLE.subtitle}</p>
       <div class="grow"></div>
-      <button class="btn btn-amber" id="s0-cta" style="width:100%;">${TITLE.cta}</button>
+      <button class="btn btn-amber" id="s0-cta" style="width:100%;">${ICONS.play} ${TITLE.cta}</button>
     </div>`;
 }
 function attachScreen0(el) {
@@ -308,9 +350,111 @@ function attachScreen0(el) {
     sessionId = makeSessionId();
     sessionEnded = false;
     trackEvent("session_start", "title", { referrer: document.referrer || null });
-    startSessionTimer();
     goTo(1);
   });
+}
+
+// ----- Screen 1 · Parent details (capture #1) -------------------------------
+function renderScreenDetails() {
+  const stateOptions = INDIA_GEO.map((s) => `<option value="${s.state}">${s.state}</option>`).join("");
+  const gradeOptions = GRADE_OPTIONS.map((g) => `<option value="${g}">${g}</option>`).join("");
+  return `
+    <div class="screen-content">
+      <div class="card glass-tile details-card">
+        <div class="eyebrow">${DETAILS_Q.eyebrow}</div>
+        <h2>${DETAILS_Q.title}</h2>
+        <p class="subtitle">${DETAILS_Q.sub}</p>
+        <div class="field">
+          <label for="d-name">${DETAILS_Q.fields.name.label}</label>
+          <input type="text" id="d-name" placeholder="${DETAILS_Q.fields.name.placeholder}" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="d-grade">${DETAILS_Q.fields.grade.label}</label>
+          <select id="d-grade">
+            <option value="" disabled selected>${DETAILS_Q.fields.grade.placeholder}</option>
+            ${gradeOptions}
+          </select>
+        </div>
+        <div class="field">
+          <label for="d-phone">${DETAILS_Q.fields.phone.label}</label>
+          <div class="phone-input-wrap">
+            <span class="phone-prefix">+91</span>
+            <input type="tel" id="d-phone" inputmode="numeric" maxlength="10" placeholder="${DETAILS_Q.fields.phone.placeholder}" autocomplete="tel-national">
+          </div>
+          <span class="field-hint" id="d-phone-hint">${DETAILS_Q.phoneHint}</span>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="d-state">${DETAILS_Q.fields.state.label}</label>
+            <select id="d-state">
+              <option value="" disabled selected>${DETAILS_Q.fields.state.placeholder}</option>
+              ${stateOptions}
+            </select>
+          </div>
+          <div class="field">
+            <label for="d-city">${DETAILS_Q.fields.city.label}</label>
+            <select id="d-city" disabled>
+              <option value="" disabled selected>${DETAILS_Q.fields.city.placeholder}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-amber" id="sd-cta" disabled style="width:100%;">${DETAILS_Q.cta}</button>
+    </div>`;
+}
+function attachScreenDetails(el) {
+  const nameInput = el.querySelector("#d-name");
+  const gradeSelect = el.querySelector("#d-grade");
+  const phoneInput = el.querySelector("#d-phone");
+  const phoneHint = el.querySelector("#d-phone-hint");
+  const stateSelect = el.querySelector("#d-state");
+  const citySelect = el.querySelector("#d-city");
+  const ctaBtn = el.querySelector("#sd-cta");
+
+  function validate() {
+    const phoneDigits = phoneInput.value.replace(/\D/g, "");
+    const phoneOk = phoneDigits.length === 10;
+    const allOk = nameInput.value.trim().length > 0 && !!gradeSelect.value && phoneOk && !!stateSelect.value && !!citySelect.value;
+    phoneHint.classList.toggle("valid", phoneOk);
+    phoneHint.classList.toggle("invalid", phoneInput.value.length > 0 && !phoneOk);
+    ctaBtn.disabled = !allOk;
+    return allOk;
+  }
+
+  nameInput.addEventListener("input", validate);
+  gradeSelect.addEventListener("change", validate);
+  phoneInput.addEventListener("input", () => {
+    phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 10);
+    validate();
+  });
+  stateSelect.addEventListener("change", () => {
+    const found = INDIA_GEO.find((s) => s.state === stateSelect.value);
+    citySelect.innerHTML =
+      `<option value="" disabled selected>${DETAILS_Q.fields.city.placeholder}</option>` +
+      (found ? found.cities.map((c) => `<option value="${c}">${c}</option>`).join("") : "");
+    citySelect.disabled = !found;
+    validate();
+  });
+  citySelect.addEventListener("change", validate);
+
+  ctaBtn.addEventListener("click", () => {
+    if (!validate()) return;
+    sfx.click();
+    state.responses.details = {
+      name: nameInput.value.trim(),
+      grade: gradeSelect.value,
+      phone: "+91" + phoneInput.value,
+      state: stateSelect.value,
+      city: citySelect.value,
+    };
+    trackEvent("question_answered", "details", state.responses.details);
+    sessionId = sessionId || makeSessionId();
+    startSessionTimer();
+    goTo(2);
+  });
+}
+function onEnterScreenDetails() {
+  speakLine("s_details_prompt");
 }
 
 // ----- Screen 1 · The honest question (capture #1) -------------------------
@@ -321,7 +465,8 @@ function renderScreen1() {
   return `
     <div class="screen-content">
       <div class="card glass-tile">
-        <p>${WORRY_Q.emoji} ${WORRY_Q.prompt}</p>
+        <div class="eyebrow">${WORRY_Q.eyebrow}</div>
+        <p>${WORRY_Q.prompt}</p>
         <div class="option-list">${opts}</div>
       </div>
       <div class="aha-box hidden" id="s1-ack">${WORRY_Q.ack}</div>
@@ -338,7 +483,7 @@ function attachScreen1(el) {
       trackEvent("question_answered", "worry", { choice: btn.dataset.id });
       el.querySelector("#s1-ack").classList.remove("hidden");
       speakLine("s_worry_ack");
-      setTimeout(() => goTo(2), 1200);
+      setTimeout(() => goTo(3), 1200);
     });
   });
 }
@@ -354,12 +499,13 @@ function renderScreen2() {
   }
   const cardHtml = (kind) => {
     const src = kind === "real" ? ASSETS.realPortrait : ASSETS.aiFakePortrait;
-    return `<div class="portrait-card glass-tile" data-kind="${kind}">${imgTag(src, "🧑", "card-img")}</div>`;
+    return `<div class="portrait-card glass-tile" data-kind="${kind}">${imgTag(src, "user", "card-img")}</div>`;
   };
   return `
     <div class="screen-content">
       <div class="round-banner">
-        <span>${ROUND1.banner}</span>
+        <span class="round-banner-icon">${ICONS[ROUND1.iconKey]}</span>
+        <span class="round-banner-label">${ROUND1.banner}</span>
         <div class="timer-ring-wrap">
           <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
           <div class="timer-ring-num">${ROUND1.timerSeconds}</div>
@@ -405,7 +551,7 @@ function attachScreen2(el) {
   });
   el.querySelector("#r1-next").addEventListener("click", () => {
     sfx.whoosh();
-    goTo(3);
+    goTo(4);
   });
 }
 function onEnterScreen2(el) {
@@ -429,14 +575,15 @@ function renderScreen3() {
   return `
     <div class="screen-content">
       <div class="round-banner">
-        <span>${ROUND2.banner}</span>
+        <span class="round-banner-icon">${ICONS[ROUND2.iconKey]}</span>
+        <span class="round-banner-label">${ROUND2.banner}</span>
         <div class="timer-ring-wrap">
           <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
           <div class="timer-ring-num">${ROUND2.timerSeconds}</div>
         </div>
       </div>
       <div class="shop-card glass-tile">
-        ${imgTag(ASSETS.fakeDealProduct, "🛍️", "card-img")}
+        ${imgTag(ASSETS.fakeDealProduct, "bag", "card-img")}
         <div class="shop-badge">${ROUND2.card.urgency}</div>
         <div class="shop-timer" id="r2-countdown">${ROUND2.card.countdown}</div>
         <div class="shop-body">
@@ -485,7 +632,7 @@ function attachScreen3(el) {
   });
   el.querySelector("#r2-next").addEventListener("click", () => {
     sfx.whoosh();
-    goTo(4);
+    goTo(5);
   });
   // cosmetic countdown to sell the "manufactured urgency" — purely decorative
   let secs = 179;
@@ -495,7 +642,7 @@ function attachScreen3(el) {
     secs = secs > 0 ? secs - 1 : 179;
     const m = Math.floor(secs / 60);
     const s = secs % 60;
-    countdownEl.textContent = `⏰ ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    countdownEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }, 1000);
 }
 function onEnterScreen3(el) {
@@ -514,13 +661,14 @@ function renderScreen4() {
   return `
     <div class="screen-content">
       <div class="round-banner">
-        <span>${ROUND3.banner}</span>
+        <span class="round-banner-icon">${ICONS[ROUND3.iconKey]}</span>
+        <span class="round-banner-label">${ROUND3.banner}</span>
         <div class="timer-ring-wrap">
           <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
           <div class="timer-ring-num">${ROUND3.timerSeconds}</div>
         </div>
       </div>
-      <div class="tutor-avatar-wrap">${imgTag(ASSETS.aiTutorAvatar, "🤖", "")}</div>
+      <div class="tutor-avatar-wrap">${imgTag(ASSETS.aiTutorAvatar, "bot", "")}</div>
       <p>${ROUND3.setup}</p>
       <div class="option-list" id="r3-options">${opts}</div>
       <div class="chat-reply-box" id="r3-chat"></div>
@@ -561,7 +709,7 @@ function attachScreen4(el) {
   });
   el.querySelector("#r3-next").addEventListener("click", () => {
     sfx.whoosh();
-    goTo(5);
+    goTo(6);
   });
 }
 function onEnterScreen4(el) {
@@ -583,7 +731,8 @@ function renderScreen5() {
   return `
     <div class="screen-content">
       <div class="round-banner">
-        <span>${ROUND4.banner}</span>
+        <span class="round-banner-icon">${ICONS[ROUND4.iconKey]}</span>
+        <span class="round-banner-label">${ROUND4.banner}</span>
         <div class="timer-ring-wrap">
           <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
           <div class="timer-ring-num">${ROUND4.timerSeconds}</div>
@@ -629,7 +778,7 @@ function attachScreen5(el) {
   });
   el.querySelector("#r4-next").addEventListener("click", () => {
     sfx.whoosh();
-    goTo(6);
+    goTo(7);
   });
 }
 function onEnterScreen5(el) {
@@ -647,7 +796,7 @@ function renderScreen6() {
     .map(
       (r) => `
       <div class="skill-row glass-tile" data-round="${r.missionLink.title}">
-        <div class="skill-emoji">${r.missionLink.emoji}</div>
+        <div class="skill-icon">${ICONS[r.missionLink.iconKey]}</div>
         <div>
           <div class="skill-title">${r.missionLink.title}</div>
           <div class="skill-subject">${r.missionLink.subject}</div>
@@ -660,6 +809,7 @@ function renderScreen6() {
     <div class="screen-content">
       <div class="grow" style="flex:0;"></div>
       <div class="card glass-tile" style="text-align:center;">
+        <div class="score-icon">${ICONS.target}</div>
         <div class="score-big" id="s6-score">You scored 0 / ${SCORE_MAX}.</div>
         <div class="score-headline" id="s6-headline"></div>
         <p class="reveal-caption" style="margin-top:10px;">${SCORE_REASSURANCE}</p>
@@ -673,7 +823,7 @@ function attachScreen6(el) {
   el.querySelectorAll(".skill-row").forEach((row) => row.addEventListener("click", () => sfx.click()));
   el.querySelector("#s6-continue").addEventListener("click", () => {
     sfx.whoosh();
-    goTo(7);
+    goTo(8);
   });
 }
 function onEnterScreen6(el) {
@@ -692,7 +842,8 @@ function renderScreen7() {
   return `
     <div class="screen-content">
       <div class="card glass-tile">
-        <p>${REFLECTION_Q.emoji} ${REFLECTION_Q.prompt}</p>
+        <div class="eyebrow">${REFLECTION_Q.eyebrow}</div>
+        <p>${REFLECTION_Q.prompt}</p>
         <div class="option-list">${opts}</div>
       </div>
       <button class="btn btn-amber hidden" id="s7-continue" style="width:100%;">Continue →</button>
@@ -717,7 +868,7 @@ function attachScreen7(el) {
   });
   el.querySelector("#s7-continue").addEventListener("click", () => {
     sfx.whoosh();
-    goTo(8);
+    goTo(9);
   });
 }
 function onEnterScreen7() {
@@ -737,7 +888,7 @@ function renderScreen8() {
   return `
     <div class="screen-content center" id="s8-container" style="position:relative;overflow:hidden;">
       <div class="grow"></div>
-      <h2 class="finale-headline">🎉 ${CLOSE.headline}</h2>
+      <h2 class="finale-headline">${CLOSE.headline}</h2>
       <p class="subtitle">${CLOSE.sub}</p>
       <div class="grow"></div>
       <button class="btn btn-amber" id="s8-primary" style="width:100%;">${CLOSE.ctaPrimary}</button>
@@ -748,11 +899,11 @@ function renderScreen8() {
 function attachScreen8(el) {
   el.querySelector("#s8-primary").addEventListener("click", () => {
     sfx.click();
-    if (CLOSE.missionListUrl && CLOSE.missionListUrl !== "#") window.open(CLOSE.missionListUrl, "_blank");
+    openMissionModal();
   });
   el.querySelector("#s8-replay").addEventListener("click", () => {
     sfx.click();
-    resetGame();
+    openKidGame();
   });
   el.querySelector("#s8-share").addEventListener("click", () => {
     sfx.click();
@@ -767,10 +918,413 @@ function onEnterScreen8(el) {
 }
 
 /* =========================================================================
+   Mission map sheet — the full grade-by-grade mission list, opened from the
+   close screen's "See the full mission list" CTA. Rendered natively (rather
+   than an embedded PDF) so it stays fast and legible on a phone screen.
+   ========================================================================= */
+function renderMissionModal() {
+  const gradesHtml = MISSION_MAP.map(
+    (g) => `
+      <div class="mm-grade" data-grade="${g.grade}">
+        <button class="mm-grade-head">
+          <span>Grade ${g.grade}</span>
+          <span class="mm-grade-count">${g.units.length} units${ICONS.chevronDown}</span>
+        </button>
+        <div class="mm-grade-body">
+          <div class="mm-grade-units">
+            ${g.units
+              .map(
+                (u, i) => `
+              <div class="mm-unit">
+                <div class="mm-unit-domain">${i + 1}. ${u.domain}</div>
+                <div class="mm-unit-row"><span class="mm-tag">Self-paced</span><span class="mm-unit-name">${u.self}</span><span class="mm-skill">${u.selfSkill}</span></div>
+                <div class="mm-unit-row"><span class="mm-tag mm-tag-group">Group · ${u.groupType === "D" ? "digital" : "kit"}</span><span class="mm-unit-name">${u.group}</span><span class="mm-skill">${u.groupSkill}</span></div>
+              </div>`
+              )
+              .join("")}
+          </div>
+        </div>
+      </div>`
+  ).join("");
+  return `
+    <div class="mm-overlay" id="mission-modal">
+      <div class="mm-sheet">
+        <div class="mm-header">
+          <div>
+            <div class="mm-title">${MISSION_MAP_META.title}</div>
+            <div class="mm-sub">${MISSION_MAP_META.sub}</div>
+          </div>
+          <button class="mm-close" id="mm-close-btn" aria-label="Close">${ICONS.close}</button>
+        </div>
+        <div class="mm-body">${gradesHtml}</div>
+      </div>
+    </div>`;
+}
+function closeMissionModal(modal) {
+  modal.classList.remove("open");
+  setTimeout(() => modal.remove(), 260);
+}
+function openMissionModal() {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = renderMissionModal();
+  const modal = wrap.firstElementChild;
+  document.getElementById("phone").appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add("open"));
+  modal.querySelector("#mm-close-btn").addEventListener("click", () => closeMissionModal(modal));
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeMissionModal(modal);
+  });
+  modal.querySelectorAll(".mm-grade-head").forEach((head) => {
+    head.addEventListener("click", () => {
+      sfx.click();
+      head.parentElement.classList.toggle("expanded");
+    });
+  });
+  const chosenGrade = state.responses.details && state.responses.details.grade;
+  const gradeNum = chosenGrade && chosenGrade.match(/\d+/);
+  const match = gradeNum && modal.querySelector(`.mm-grade[data-grade="${gradeNum[0]}"]`);
+  if (match) {
+    match.classList.add("expanded");
+    setTimeout(() => match.scrollIntoView({ block: "start", behavior: "smooth" }), 320);
+  }
+  trackEvent("mission_list_opened", SCREEN_NAMES[state.current] || null, {});
+}
+
+/* =========================================================================
+   Kids mini-game · "Can You Spot the Fake AI?" — opened from the close
+   screen's "Your child's turn" button. Self-contained mini state machine
+   (its own KG_STEPS array + kgGoTo) so it doesn't disturb the parent flow's
+   screen/pip/session-timer bookkeeping. Reuses existing components (glass
+   tiles, timer ring, sfx, confetti, ICONS) rather than inventing new ones.
+   ========================================================================= */
+let kgState = { step: 0, deck: null, deckIndex: 0, answers: {}, challengeResolved: false };
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// One-card-at-a-time swipe deck: drag right = Real, drag left = Fake, or
+// tap a button (Fake / Not sure / Real) below — buttons are the only way to
+// answer "Not sure" since there's no natural swipe direction for it, and
+// they also make the whole interaction reachable without touch/drag.
+function kgSetupSwipeCard(card, onAnswer) {
+  const stampReal = card.querySelector(".kg-stamp-real");
+  const stampFake = card.querySelector(".kg-stamp-fake");
+  const threshold = 90;
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let dx = 0;
+
+  function onPointerDown(e) {
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    card.style.transition = "none";
+    card.setPointerCapture(e.pointerId);
+  }
+  function onPointerMove(e) {
+    if (!dragging) return;
+    dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    card.style.transform = `translate(${dx}px, ${dy * 0.15}px) rotate(${dx / 18}deg)`;
+    stampReal.style.opacity = Math.max(0, Math.min(1, dx / threshold));
+    stampFake.style.opacity = Math.max(0, Math.min(1, -dx / threshold));
+  }
+  function onPointerUp() {
+    if (!dragging) return;
+    dragging = false;
+    card.style.transition = "transform 260ms ease, opacity 260ms ease";
+    if (dx > threshold) flyAway("real");
+    else if (dx < -threshold) flyAway("fake");
+    else {
+      card.style.transform = "";
+      stampReal.style.opacity = 0;
+      stampFake.style.opacity = 0;
+    }
+    dx = 0;
+  }
+  function flyAway(answer) {
+    if (card._kgAnswered) return;
+    card._kgAnswered = true;
+    card.removeEventListener("pointerdown", onPointerDown);
+    card.removeEventListener("pointermove", onPointerMove);
+    card.removeEventListener("pointerup", onPointerUp);
+    card.removeEventListener("pointercancel", onPointerUp);
+    card.style.transition = "transform 260ms ease, opacity 260ms ease";
+    if (answer === "real") card.style.transform = "translate(520px, -40px) rotate(24deg)";
+    else if (answer === "fake") card.style.transform = "translate(-520px, -40px) rotate(-24deg)";
+    else card.style.transform = "translate(0, -60px) scale(0.7)";
+    card.style.opacity = "0";
+    setTimeout(() => onAnswer(answer), 220);
+  }
+  card.addEventListener("pointerdown", onPointerDown);
+  card.addEventListener("pointermove", onPointerMove);
+  card.addEventListener("pointerup", onPointerUp);
+  card.addEventListener("pointercancel", onPointerUp);
+  card._kgFlyAway = flyAway;
+}
+
+function kgStepIntro() {
+  return `
+    <div class="grow"></div>
+    <div class="eyebrow">${KID_GAME.intro.eyebrow}</div>
+    <h1 class="title-hero">${KID_GAME.intro.title}</h1>
+    <p class="subtitle">${KID_GAME.intro.sub}</p>
+    <div class="grow"></div>
+    <button class="btn btn-amber" id="kg-start" style="width:100%;">${ICONS.play} ${KID_GAME.intro.cta}</button>`;
+}
+function kgAttachIntro(body) {
+  body.querySelector("#kg-start").addEventListener("click", () => {
+    sfx.click();
+    trackEvent("kid_game_started", "kid_intro", {});
+    kgGoTo(1);
+  });
+}
+
+function kgStepChallenge() {
+  if (!kgState.deck) {
+    kgState.deck = shuffleArray(KID_GAME.challenge.images.slice());
+    kgState.deckIndex = 0;
+    kgState.answers = {};
+  }
+  const cards = kgState.deck
+    .map(
+      (img, i) => `
+      <div class="kg-swipe-card glass-tile" style="z-index:${kgState.deck.length - i};">
+        <img src="${encodeURI(img.src)}" onerror="handleImgError(this,'user')" alt="">
+        <div class="kg-stamp kg-stamp-real">REAL</div>
+        <div class="kg-stamp kg-stamp-fake">FAKE</div>
+      </div>`
+    )
+    .join("");
+  return `
+    <div class="round-banner">
+      <span class="round-banner-icon">${ICONS[KID_GAME.challenge.iconKey]}</span>
+      <span class="round-banner-label">${KID_GAME.challenge.banner}</span>
+      <div class="timer-ring-wrap">
+        <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
+        <div class="timer-ring-num">${KID_GAME.challenge.timerSeconds}</div>
+      </div>
+    </div>
+    <p>${KID_GAME.challenge.instructions}</p>
+    <div class="kg-progress" id="kg-progress">Picture 1 of ${kgState.deck.length}</div>
+    <div class="kg-deck">${cards}</div>
+    <p class="kg-swipe-hint">Swipe the picture, or tap a button</p>
+    <div class="kg-swipe-actions">
+      <button class="kg-action-btn kg-action-fake" data-answer="fake">${ICONS.close}<span>Fake</span></button>
+      <button class="kg-action-btn kg-action-confused" data-answer="confused">${ICONS.helpCircle}<span>Not sure</span></button>
+      <button class="kg-action-btn kg-action-real" data-answer="real">${ICONS.check}<span>Real</span></button>
+    </div>`;
+}
+function kgAttachChallenge(body) {
+  kgState.challengeResolved = false;
+  const cards = Array.from(body.querySelectorAll(".kg-swipe-card"));
+  const progressEl = body.querySelector("#kg-progress");
+
+  function updateProgress() {
+    progressEl.textContent = `Picture ${Math.min(kgState.deckIndex + 1, cards.length)} of ${cards.length}`;
+  }
+  function finishChallenge(timedOut) {
+    if (kgState.challengeResolved) return;
+    kgState.challengeResolved = true;
+    stopRingTimer();
+    const score = kgState.deck.filter((img) => kgState.answers[img.id] === (img.isFake ? "fake" : "real")).length;
+    trackEvent("kid_game_answered", "kid_challenge", {
+      answers: kgState.answers,
+      score,
+      scoreMax: KID_GAME.scoreMax,
+      timedOut: !!timedOut,
+    });
+    score === KID_GAME.scoreMax ? sfx.correct() : sfx.wrong();
+    setTimeout(() => kgGoTo(2), timedOut ? 0 : 300);
+  }
+  function wireCard(index) {
+    kgSetupSwipeCard(cards[index], (answer) => {
+      if (kgState.challengeResolved) return;
+      kgState.answers[kgState.deck[index].id] = answer;
+      kgState.deckIndex = index + 1;
+      if (kgState.deckIndex >= cards.length) finishChallenge(false);
+      else {
+        updateProgress();
+        wireCard(kgState.deckIndex);
+      }
+    });
+  }
+  body.querySelectorAll(".kg-action-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (kgState.challengeResolved || kgState.deckIndex >= cards.length) return;
+      sfx.click();
+      const card = cards[kgState.deckIndex];
+      if (card._kgFlyAway) card._kgFlyAway(btn.dataset.answer);
+    });
+  });
+  updateProgress();
+  wireCard(kgState.deckIndex);
+  body._kgFinish = finishChallenge;
+}
+function kgOnEnterChallenge(overlay, body) {
+  startRingTimer(body, KID_GAME.challenge.timerSeconds, () => {
+    while (kgState.deckIndex < kgState.deck.length) {
+      kgState.answers[kgState.deck[kgState.deckIndex].id] = "confused";
+      kgState.deckIndex++;
+    }
+    if (body._kgFinish) body._kgFinish(true);
+  });
+}
+
+function kgStepReveal() {
+  const deck = kgState.deck;
+  const score = deck.filter((img) => kgState.answers[img.id] === (img.isFake ? "fake" : "real")).length;
+  const confusedCount = deck.filter((img) => kgState.answers[img.id] === "confused").length;
+  const band = KID_GAME.scoreBands.find((b) => score >= b.min && score <= b.max) || KID_GAME.scoreBands[0];
+  const rows = deck
+    .map((img) => {
+      const answer = kgState.answers[img.id];
+      const correctAnswer = img.isFake ? "fake" : "real";
+      let tag, mark;
+      if (answer === "confused") {
+        tag = img.isFake ? "AI · you weren't sure" : "Real · you weren't sure";
+        mark = "muted";
+      } else if (answer === correctAnswer) {
+        tag = img.isFake ? "AI · you caught it!" : "Real · you got it!";
+        mark = "good";
+      } else {
+        tag = img.isFake ? "AI · you missed this one" : "Real · false alarm";
+        mark = "bad";
+      }
+      return `
+        <div class="kg-reveal-row glass-tile">
+          <img src="${encodeURI(img.src)}" class="kg-reveal-thumb" onerror="handleImgError(this,'user')" alt="">
+          <div>
+            <div class="kg-reveal-tag ${img.isFake ? "fake" : "real"}">${tag}</div>
+            <div class="kg-reveal-note">${img.explain}</div>
+          </div>
+          <div class="kg-mark ${mark}">${mark === "bad" ? "✗" : mark === "muted" ? "?" : "✓"}</div>
+        </div>`;
+    })
+    .join("");
+  return `
+    <div class="card glass-tile" style="text-align:center;">
+      <div class="score-icon">${ICONS.target}</div>
+      <div class="score-big">You got ${score} of ${deck.length} right${confusedCount ? `, unsure on ${confusedCount}` : ""}.</div>
+      <div class="score-headline">${band.headline}</div>
+      <p class="reveal-caption" style="margin-top:10px;">${KID_GAME.reassurance}</p>
+    </div>
+    ${rows}
+    <div class="aha-box">${KID_GAME.aha}</div>
+    <button class="btn btn-amber" id="kg-reveal-next" style="width:100%;">Next →</button>`;
+}
+function kgAttachReveal(body) {
+  body.querySelector("#kg-reveal-next").addEventListener("click", () => {
+    sfx.whoosh();
+    kgGoTo(3);
+  });
+}
+
+function kgStepCfu() {
+  const opts = KID_GAME.cfu.options.map((o) => `<button class="option-btn glass-tile" data-id="${o.id}">${o.label}</button>`).join("");
+  return `
+    <div class="card glass-tile">
+      <div class="eyebrow">${KID_GAME.cfu.eyebrow}</div>
+      <p>${KID_GAME.cfu.prompt}</p>
+      <div class="option-list">${opts}</div>
+    </div>`;
+}
+function kgAttachCfu(body) {
+  const buttons = body.querySelectorAll(".option-btn");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      sfx.click();
+      buttons.forEach((b) => (b.disabled = true));
+      btn.classList.add("correct");
+      trackEvent("kid_game_cfu", "kid_cfu", { choice: btn.dataset.id });
+      setTimeout(() => kgGoTo(4), 900);
+    });
+  });
+}
+
+function kgStepClose() {
+  return `
+    <div class="grow"></div>
+    <h2 class="finale-headline">${KID_GAME.close.headline}</h2>
+    <p class="subtitle">${KID_GAME.close.sub}</p>
+    <div class="grow"></div>
+    <button class="btn btn-amber" id="kg-done" style="width:100%;">${KID_GAME.close.cta}</button>`;
+}
+function kgAttachClose(body) {
+  body.querySelector("#kg-done").addEventListener("click", () => {
+    sfx.click();
+    closeKidGame();
+  });
+}
+function kgOnEnterClose(overlay, body) {
+  sfx.celebrate();
+  burstConfetti(overlay);
+}
+
+const KG_STEPS = [
+  { render: kgStepIntro, attach: kgAttachIntro, center: true },
+  { render: kgStepChallenge, attach: kgAttachChallenge, onEnter: kgOnEnterChallenge, center: false },
+  { render: kgStepReveal, attach: kgAttachReveal, center: false },
+  { render: kgStepCfu, attach: kgAttachCfu, center: false },
+  { render: kgStepClose, attach: kgAttachClose, onEnter: kgOnEnterClose, center: true },
+];
+
+let kgOverlayEl = null;
+
+function kgGoTo(n) {
+  stopRingTimer();
+  kgState.step = n;
+  const overlay = kgOverlayEl;
+  if (!overlay) return;
+  const body = overlay.querySelector(".kg-body");
+  const def = KG_STEPS[n];
+  body.className = "kg-body screen-content" + (def.center ? " center" : "");
+  body.innerHTML = def.render();
+  def.attach(body);
+  if (def.onEnter) def.onEnter(overlay, body);
+  body.scrollTop = 0;
+}
+
+function closeKidGame() {
+  stopRingTimer();
+  const overlay = kgOverlayEl;
+  if (!overlay) return;
+  kgOverlayEl = null;
+  overlay.classList.remove("open");
+  setTimeout(() => overlay.remove(), 260);
+}
+
+function openKidGame() {
+  kgState = { step: 0, deck: null, deckIndex: 0, answers: {}, challengeResolved: false };
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    <div class="kg-overlay">
+      <button class="kg-close" id="kg-close-btn" aria-label="Close">${ICONS.close}</button>
+      <div class="kg-body screen-content center"></div>
+    </div>`;
+  const overlay = wrap.firstElementChild;
+  kgOverlayEl = overlay;
+  document.getElementById("phone").appendChild(overlay);
+  overlay.querySelector("#kg-close-btn").addEventListener("click", () => {
+    sfx.click();
+    closeKidGame();
+  });
+  requestAnimationFrame(() => overlay.classList.add("open"));
+  kgGoTo(0);
+}
+
+/* =========================================================================
    State machine
    ========================================================================= */
 const SCREEN_DEFS = [
   { render: renderScreen0, attach: attachScreen0, bg: "hero" },
+  { render: renderScreenDetails, attach: attachScreenDetails, onEnter: onEnterScreenDetails, bg: "ambient" },
   { render: renderScreen1, attach: attachScreen1, onEnter: onEnterScreen1, bg: "ambient" },
   { render: renderScreen2, attach: attachScreen2, onEnter: onEnterScreen2, bg: "ambient" },
   { render: renderScreen3, attach: attachScreen3, onEnter: onEnterScreen3, bg: "ambient" },
@@ -811,6 +1365,8 @@ function resetGame() {
   state = { responses: {}, roundScore: 0, current: 0 };
   sessionId = null;
   sessionEnded = false;
+  sessionRemaining = SESSION_SECONDS;
+  updateSessionDisplay();
   buildAllScreens();
   goTo(0);
 }
@@ -818,14 +1374,16 @@ function resetGame() {
 /* =========================================================================
    Top bar wiring (logo, timer, voice toggle — all top-right)
    ========================================================================= */
+function updateVoiceIcon() {
+  voiceBtn.innerHTML = voiceMuted ? ICONS.volumeOff : ICONS.volumeOn;
+}
 function initTopbar() {
-  brandLogo.src = encodeURI(ASSETS.skaiLogo);
-  brandLogo.onerror = () => (brandLogo.outerHTML = "<span style='font-weight:800;color:var(--accent);'>SKAI</span>");
   updateSessionDisplay();
+  updateVoiceIcon();
   voiceBtn.addEventListener("click", () => {
     sfx.click();
     voiceMuted = !voiceMuted;
-    voiceBtn.textContent = voiceMuted ? "🔇" : "🔊";
+    updateVoiceIcon();
     voiceBtn.classList.toggle("muted", voiceMuted);
     if (voiceMuted) stopNarration();
   });
