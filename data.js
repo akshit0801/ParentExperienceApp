@@ -7,8 +7,9 @@ const ASSETS = {
   finaleBg: "Image assets/Finale background.png",
   realPortrait: "Image assets/The real-looking portrait.png",
   aiFakePortrait: "Image assets/The AI fake portrait (with a spot-the-tell flaw).png",
+  aiFakePortrait2: "Image assets/real_fake images.png",
+  aiFakePortrait3: "Image assets/real_fake images 2.png",
   fakeDealProduct: "Image assets/Fake-deal product image.png",
-  aiTutorAvatar: "Image assets/AI tutor avatar.png",
   skaiLogo: "Image assets/SKAI Space_RBG(For Digital Use).webp",
   kidRealPhoto2: "Image assets/Screenshot 2026-08-24 131141.png",
   kidAiFakePhoto2: "Image assets/ChatGPT Image Aug 24, 2026, 01_09_53 PM (1).png",
@@ -27,63 +28,18 @@ const GRADE_OPTIONS = [
   "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9",
 ];
 
-// Every Indian state + union territory, each with its major cities —
-// powers the state → city cascading dropdown on the details screen.
-const INDIA_GEO = [
-  { state: "Andaman and Nicobar Islands", cities: ["Port Blair"] },
-  { state: "Andhra Pradesh", cities: ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Tirupati", "Amaravati"] },
-  { state: "Arunachal Pradesh", cities: ["Itanagar", "Naharlagun", "Pasighat", "Tawang"] },
-  { state: "Assam", cities: ["Guwahati", "Dibrugarh", "Silchar", "Jorhat", "Tezpur"] },
-  { state: "Bihar", cities: ["Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Darbhanga"] },
-  { state: "Chandigarh", cities: ["Chandigarh"] },
-  { state: "Chhattisgarh", cities: ["Raipur", "Bhilai", "Bilaspur", "Durg", "Korba"] },
-  { state: "Dadra and Nagar Haveli and Daman and Diu", cities: ["Daman", "Diu", "Silvassa"] },
-  { state: "Delhi", cities: ["New Delhi", "Dwarka", "Rohini", "Saket", "Karol Bagh"] },
-  { state: "Goa", cities: ["Panaji", "Margao", "Vasco da Gama", "Mapusa"] },
-  { state: "Gujarat", cities: ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Gandhinagar", "Bhavnagar"] },
-  { state: "Haryana", cities: ["Gurugram", "Faridabad", "Panipat", "Ambala", "Karnal", "Hisar"] },
-  { state: "Himachal Pradesh", cities: ["Shimla", "Manali", "Dharamshala", "Solan", "Mandi"] },
-  { state: "Jammu and Kashmir", cities: ["Srinagar", "Jammu", "Anantnag", "Baramulla"] },
-  { state: "Jharkhand", cities: ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro", "Hazaribagh"] },
-  { state: "Karnataka", cities: ["Bengaluru", "Mysuru", "Mangaluru", "Hubballi", "Belagavi", "Shivamogga"] },
-  { state: "Kerala", cities: ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur", "Kollam", "Kannur"] },
-  { state: "Ladakh", cities: ["Leh", "Kargil"] },
-  { state: "Lakshadweep", cities: ["Kavaratti"] },
-  { state: "Madhya Pradesh", cities: ["Bhopal", "Indore", "Jabalpur", "Gwalior", "Ujjain"] },
-  { state: "Maharashtra", cities: ["Mumbai", "Pune", "Nagpur", "Nashik", "Aurangabad", "Thane"] },
-  { state: "Manipur", cities: ["Imphal", "Thoubal", "Bishnupur"] },
-  { state: "Meghalaya", cities: ["Shillong", "Tura", "Jowai"] },
-  { state: "Mizoram", cities: ["Aizawl", "Lunglei", "Champhai"] },
-  { state: "Nagaland", cities: ["Kohima", "Dimapur", "Mokokchung"] },
-  { state: "Odisha", cities: ["Bhubaneswar", "Cuttack", "Rourkela", "Puri", "Sambalpur"] },
-  { state: "Puducherry", cities: ["Puducherry", "Karaikal", "Mahe", "Yanam"] },
-  { state: "Punjab", cities: ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Mohali", "Bathinda"] },
-  { state: "Rajasthan", cities: ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Ajmer", "Bikaner"] },
-  { state: "Sikkim", cities: ["Gangtok", "Namchi", "Gyalshing"] },
-  { state: "Tamil Nadu", cities: ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Tirunelveli"] },
-  { state: "Telangana", cities: ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Khammam"] },
-  { state: "Tripura", cities: ["Agartala", "Udaipur", "Dharmanagar"] },
-  { state: "Uttar Pradesh", cities: ["Lucknow", "Kanpur", "Agra", "Varanasi", "Noida", "Ghaziabad", "Prayagraj", "Meerut"] },
-  { state: "Uttarakhand", cities: ["Dehradun", "Haridwar", "Rishikesh", "Nainital", "Haldwani"] },
-  { state: "West Bengal", cities: ["Kolkata", "Howrah", "Durgapur", "Siliguri", "Asansol"] },
-];
-
 const DETAILS_Q = {
   eyebrow: "Before we begin",
   title: "A little about you",
-  sub: "So we can tailor the challenge to your child — takes ten seconds.",
+  sub: "Just two things — takes five seconds.",
   fields: {
-    name: { label: "Your name", placeholder: "e.g. Priya Sharma" },
-    grade: { label: "Child's grade", placeholder: "Select grade" },
-    phone: { label: "Mobile number", placeholder: "10-digit mobile number" },
-    state: { label: "State", placeholder: "Select state" },
-    city: { label: "City", placeholder: "Select city" },
+    name: { label: "Student's name", placeholder: "e.g. Aarav Sharma" },
+    grade: { label: "Grade", placeholder: "Select grade" },
   },
-  phoneHint: "Enter a valid 10-digit mobile number",
   cta: "Start the challenge",
 };
 
-// ---- Screen 2 · The honest question (capture #2) -----------------------
+// ---- Screen 2 · The honest question, shown as a pop-up (capture #2) -----
 const WORRY_Q = {
   eyebrow: "One honest question",
   prompt:
@@ -94,32 +50,65 @@ const WORRY_Q = {
     { id: "C", label: "Is their school actually teaching the right things?" },
     { id: "D", label: "Honestly… I try not to think about it." },
   ],
-  ack: "You're not alone — most parents pick that too. Let's look at what your child is actually learning.",
+  ack: "You're not alone — most parents pick that too.",
+  cta: "Continue",
 };
 
-// ---- Screen 3 · Round 1 · Real or AI? (capture #3) ----------------------
-const ROUND1 = {
-  banner: "Round 1 of 4 · Real or AI?",
+// ---- Screen 3 · "Take Challenge 1" interstitial --------------------------
+const CHALLENGE1_INTRO = {
+  eyebrow: "Challenge 1",
+  title: "Real or AI?",
+  sub: "You'll see 4 pictures, one at a time. Some are real. Some aren't.",
+  cta: "Start Challenge 1",
+};
+
+// ---- Screen 4 · Challenge 1 · Real or AI? (capture #3) -------------------
+const CHALLENGE1 = {
+  banner: "Challenge 1 · Real or AI?",
   iconKey: "eye",
-  timerSeconds: 30,
-  prompt: "One of these was made by AI. Which one?",
-  correct: "aiFake", // the AI fake portrait is always correct
-  captionOnFake:
-    "The tells: too-perfect studio lighting, flawless skin, dreamy background blur. Real phone selfies look like the other one.",
+  timerSeconds: 45,
+  instructions: "Look closely, then tap Real, AI, or It's confusing.",
+  images: [
+    {
+      id: "real1",
+      src: ASSETS.realPortrait,
+      isFake: false,
+      explain: "Real — a normal phone photo, a little imperfect, just like real life.",
+    },
+    {
+      id: "fake1",
+      src: ASSETS.aiFakePortrait,
+      isFake: true,
+      explain: "AI-made — too-perfect studio lighting, flawless skin, and a dreamy background blur.",
+    },
+    {
+      id: "fake2",
+      src: ASSETS.aiFakePortrait2,
+      isFake: true,
+      explain: "AI-made — the skin is unnaturally smooth and even, with none of the small blemishes a real camera picks up.",
+    },
+    {
+      id: "fake3",
+      src: ASSETS.aiFakePortrait3,
+      isFake: true,
+      explain: "AI-made — look at the background: it's a little too tidy and repetitive, a common AI tell.",
+    },
+  ],
+  scoreMax: 4,
   aha: "Even adults get this ~50/50 — a coin flip. Your child trains to spot the tells.",
   missionLink: {
     iconKey: "eye",
-    title: "Round 1 → “Deepfake Detector”",
+    title: "Challenge 1 → “Deepfake Detector”",
     subject: "AI & media literacy",
     line: "Your child trains an AI to tell real from fake.",
   },
 };
 
-// ---- Screen 4 · Round 2 · Spot the Trap (capture #4) --------------------
-const ROUND2 = {
-  banner: "Round 2 of 4 · Spot the Trap",
+// ---- Screen 5 · Challenge 2 · Spot the Trap (capture #4) -----------------
+const CHALLENGE2 = {
+  banner: "Challenge 2 · Spot the Trap",
   iconKey: "search",
-  timerSeconds: 30,
+  timerSeconds: 60,
   card: {
     mrp: "MRP ₹4,999",
     price: "Now ₹999 — 80% OFF!",
@@ -136,99 +125,28 @@ const ROUND2 = {
   ],
   reveal:
     "The ₹4,999 ‘MRP’ was never a real price; the timer resets on refresh. Your child learns to expose this with real data in a mission called Price Detective.",
+  cta: "Confirm answer",
   missionLink: {
     iconKey: "search",
-    title: "Round 2 → “Price Detective”",
+    title: "Challenge 2 → “Price Detective”",
     subject: "Data & digital literacy",
     line: "Your child uses real data to expose fake deals and false claims.",
   },
 };
 
-// ---- Screen 5 · Round 3 · Talk to the Machine (capture #5) --------------
-const ROUND3 = {
-  banner: "Round 3 of 4 · Talk to the Machine",
-  iconKey: "chat",
-  timerSeconds: 30,
-  setup:
-    "Your child is stuck on fractions. You want AI to actually help them learn — not just hand over the answer. Which message do you send?",
-  options: [
-    {
-      id: "A",
-      label: "Solve this and show all the working: 3/4 + 2/5",
-      correct: false,
-      reply: "Here's the working: find a common denominator, 20. 15/20 + 8/20 = 23/20 = 1 3/20. Done!",
-      replyKind: "bare",
-    },
-    {
-      id: "B",
-      label: "You're a fractions expert — explain everything I need to know about adding fractions.",
-      correct: false,
-      reply:
-        "A fraction represents a part of a whole, written as a numerator over a denominator. To add fractions, you need a common denominator... (keeps going for a while)",
-      replyKind: "lecture",
-    },
-    {
-      id: "C",
-      label:
-        "Act as a patient tutor for a 12-year-old. Explain adding fractions with one everyday example, then give me 2 practice questions and wait for my answers before telling me if I'm right.",
-      correct: true,
-      reply:
-        "Sure! Think of a pizza cut into 4 slices and another cut into 5. If you eat 3/4 of the first and 2/5 of the second... Ready to try one? Q1: 1/2 + 1/3 = ?",
-      replyKind: "dialogue",
-    },
-  ],
-  aha: "That's called prompting — a real skill. Your child practises it weekly to make AI a tutor, not a cheat-sheet.",
-  missionLink: {
-    iconKey: "chat",
-    title: "Round 3 → “Study Buddy Bot”",
-    subject: "Prompt engineering",
-    line: "Your child builds AI tutors by learning how to ask.",
-  },
-};
-
-// ---- Screen 6 · Round 4 · Bug Hunt (capture #6) --------------------------
-const ROUND4 = {
-  banner: "Round 4 of 4 · Bug Hunt",
-  iconKey: "code",
-  timerSeconds: 30,
-  setup:
-    "Your child's classmate coded these steps to make a robot water a plant. The robot keeps knocking the pot over. Which step is the bug?",
-  steps: [
-    "Move forward 4 steps",
-    "Turn right 90°",
-    "Move forward 1 step",
-    "Pour the water",
-  ],
-  options: [
-    { id: "A", label: "Step 1 — Move forward 4 steps", correct: false },
-    { id: "B", label: "Step 2 — Turn right 90°", correct: false },
-    { id: "C", label: "Step 3 — Move forward 1 step", correct: false },
-    { id: "D", label: "Step 4 — Pour the water", correct: true },
-  ],
-  reveal:
-    "There's no “stop” command before step 4 — the robot is still moving forward when it starts pouring, and that's what knocks the pot over. A missing step breaks things just as much as a wrong one.",
-  aha: "That's computational thinking — breaking a task into exact steps and catching the ones that are missing. Your child debugs code like this every week.",
-  missionLink: {
-    iconKey: "code",
-    title: "Round 4 → “Bug Hunt”",
-    subject: "STEM & computational thinking",
-    line: "Your child breaks big problems into exact steps — and finds what's missing.",
-  },
-};
-
-// ---- Screen 7 · The reveal — score + skill map --------------------------
+// ---- Screen 6 · The reveal — score + skill map --------------------------
 const SCORE_BANDS = [
-  { min: 0, max: 1, headline: "Tricky, isn't it?" },
-  { min: 2, max: 3, headline: "Sharp." },
-  { min: 4, max: 4, headline: "Rare — you'd fit right in." },
+  { min: 0, max: 2, headline: "Tricky, isn't it?" },
+  { min: 3, max: 4, headline: "Sharp." },
+  { min: 5, max: 5, headline: "Rare — you'd fit right in." },
 ];
-const SCORE_MAX = 4;
+const SCORE_MAX = 5;
 const SCORE_REASSURANCE =
-  "Most parents get 1 out of 4. That's exactly why this classroom exists.";
+  "Most parents get 2 out of 5. That's exactly why this classroom exists.";
 const SKILL_MAP_FOOTER =
-  "4 of 16 missions your child does across AI, STEM, Data, and Entrepreneurship.";
+  "2 of 16 missions your child does across AI, STEM, Data, and Entrepreneurship.";
 
-// ---- Screen 8 · Reflection (capture #7) ---------------------------------
+// ---- Screen 7 · Reflection (capture #5) ----------------------------------
 const REFLECTION_Q = {
   eyebrow: "Quick reflection",
   prompt: "Now that you've been inside it — how do you feel about what your child is learning here?",
@@ -237,9 +155,10 @@ const REFLECTION_Q = {
     { id: "B", label: "Curious — I want to see more." },
     { id: "C", label: "Motivated — I want to learn some of this myself." },
   ],
+  cta: "Continue",
 };
 
-// ---- Screen 9 · Close ----------------------------------------------------
+// ---- Screen 8 · Close ----------------------------------------------------
 const CLOSE = {
   headline: "You were taught to memorise. They're being taught to think — with the machine.",
   sub: "That's the gap this classroom closes. And now you've felt it too.",
@@ -248,6 +167,17 @@ const CLOSE = {
   ctaShare: "Challenge another parent →",
   shareMessage:
     "I just took the \"Could You Pass Your Kid's Class?\" challenge — it shows exactly what AI is teaching kids now. Bet you can't score higher than me.",
+};
+
+// ---- Phone gate — shown once, only if a parent taps "See the full mission
+// list", so we can share the right follow-up with them ---------------------
+const PHONE_GATE = {
+  eyebrow: "One last thing",
+  title: "Where should we send it?",
+  sub: "Add your number and we'll open the full mission list.",
+  field: { label: "Mobile number", placeholder: "10-digit mobile number" },
+  hint: "Enter a valid 10-digit mobile number",
+  cta: "Show me the missions",
 };
 
 // ---- Full mission map (shown in the "See the full mission list" sheet) --
@@ -387,22 +317,19 @@ const MISSION_MAP = [
 
 // ---- Kids mini-game · "Can You Spot the Fake AI?" ------------------------
 // Launched from the close screen's "Your child's turn" button. Harder than
-// the parent's round: 5 pictures, 2 are AI, child must find both.
-// Placeholder file paths below (kg2/kg3/kg4) don't exist yet — the existing
-// image-fallback system shows a clean icon instead of a broken image until
-// real files are dropped in at these exact paths.
+// the parent's challenge: 4 pictures, one at a time, swipe or tap.
 const KID_GAME = {
   intro: {
     eyebrow: "Your turn!",
     title: "Can YOU Spot the Fake AI?",
-    sub: "Mum or Dad just tried this. Yours is harder — 4 pictures, one at a time. Swipe or tap to say Real, Fake, or Not sure.",
+    sub: "4 pictures, one at a time. Swipe or tap: Real, Fake, or Not sure.",
     cta: "Start my challenge",
   },
   challenge: {
     banner: "Real, Fake, or Not sure?",
     iconKey: "eye",
     timerSeconds: 45,
-    instructions: "Swipe right for Real, left for Fake — or tap a button below. It's OK to say you're not sure.",
+    instructions: "Swipe right for Real, left for Fake — or tap a button.",
     images: [
       {
         id: "real1",
@@ -414,7 +341,7 @@ const KID_GAME = {
         id: "fake1",
         src: ASSETS.aiFakePortrait,
         isFake: true,
-        explain: "AI-made — too-perfect studio lighting, flawless skin, and a dreamy blurred background are classic AI tells.",
+        explain: "AI-made — too-perfect studio lighting, flawless skin, and a dreamy blurred background.",
       },
       {
         id: "real2",
@@ -426,21 +353,21 @@ const KID_GAME = {
         id: "fake2",
         src: ASSETS.kidAiFakePhoto2,
         isFake: true,
-        explain: "AI-made — look closely at the skin texture and background details; AI often smooths these too much.",
+        explain: "AI-made — the skin texture and background are a little too smooth.",
       },
     ],
   },
-  aha: "AI pictures often look *too* perfect — flawless skin, dreamy backgrounds, and small mistakes in hands, ears, or edges. Once you know the tells, they get much easier to spot.",
+  aha: "AI pictures often look *too* perfect. Once you know the tells, they're easier to spot.",
   scoreBands: [
     { min: 0, max: 1, headline: "Tricky, right? AI is getting good." },
     { min: 2, max: 3, headline: "Nice — sharp eyes!" },
     { min: 4, max: 4, headline: "Perfect! You caught every one." },
   ],
   scoreMax: 4,
-  reassurance: "Most kids get 2 of 4 on their first try. Now you know exactly what to look for.",
+  reassurance: "Most kids get 2 of 4 on their first try.",
   cfu: {
     eyebrow: "One quick question",
-    prompt: "Would you like to learn how to spot a fake AI picture every time?",
+    prompt: "Want to learn how to spot a fake AI picture every time?",
     options: [
       { id: "A", label: "Yes — teach me the tricks!" },
       { id: "B", label: "I want to try more games like this." },
@@ -449,42 +376,7 @@ const KID_GAME = {
   },
   close: {
     headline: "Nice work, detective.",
-    sub: "Spotting real from fake is a real skill — and it's exactly what SKAI Space teaches every week.",
+    sub: "That's exactly what SKAI Space teaches every week.",
     cta: "Done",
   },
-};
-
-// ---- Narrator lines (spoken via TTS, or a matching mp3 in Voice assets/) --
-const NARRATION = {
-  s_title:
-    "Could you pass your kid's class? Your child's classroom now runs on AI. Take the three minute challenge and see if you could keep up.",
-  s_details_prompt:
-    "Quick one before we start. Tell us a little about you and your child.",
-  s_worry_prompt:
-    "One honest question. When you picture your child's future in a world run by AI, what sits with you most?",
-  s_worry_ack:
-    "You're not alone. Most parents pick that too. Let's look at what your child is actually learning.",
-  s_r1_prompt:
-    "Round one of four. Real or AI? One of these was made by AI. Which one?",
-  s_r1_reveal_correct:
-    "Nice catch! Even adults get this about fifty-fifty, a coin flip. Your child trains to spot the tells.",
-  s_r1_reveal_wrong:
-    "The tells were too-perfect studio lighting, flawless skin, and a dreamy background blur. Even adults get this about fifty-fifty. Your child trains to spot the tells.",
-  s_r2_prompt:
-    "Round two of four, spot the trap. Real deal, or a trick? Tap what gives it away.",
-  s_r2_reveal:
-    "The four thousand nine hundred ninety nine rupee price was never real, and the timer resets on refresh. Your child learns to expose this with real data.",
-  s_r3_prompt:
-    "Round three of four, talk to the machine. Your child is stuck on fractions. Which message actually helps them learn?",
-  s_r3_aha:
-    "That's called prompting, a real skill. Your child practises it weekly to make AI a tutor, not a cheat sheet.",
-  s_r4_prompt:
-    "Round four of four, bug hunt. The robot keeps knocking the pot over. Which step is the bug?",
-  s_r4_reveal:
-    "There's no stop command before step four, so the robot is still moving when it pours. A missing step breaks things just as much as a wrong one. Your child hunts for bugs exactly like this.",
-  s_score: "Here's how you did.",
-  s_reflection_prompt:
-    "Now that you've been inside it, how do you feel about what your child is learning here?",
-  s_close:
-    "You were taught to memorise. They're being taught to think, with the machine. That's the gap this classroom closes.",
 };

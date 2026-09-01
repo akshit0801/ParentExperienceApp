@@ -1,6 +1,7 @@
 // game.js — "Could You Pass Your Kid's Class?"
-// State machine: goTo(n) shows screen n (0-9) and runs its onEnter hook.
-// Screens: 0 title, 1 details, 2 worry, 3 round1, 4 round2, 5 round3, 6 round4, 7 score, 8 reflection, 9 close.
+// State machine: goTo(n) shows screen n (0-8) and runs its onEnter hook.
+// Screens: 0 title, 1 details, 2 worry (popup), 3 challenge1 intro, 4 challenge1,
+// 5 challenge2, 6 score, 7 reflection, 8 close.
 // All game state lives in the in-memory `state` object below — no localStorage/sessionStorage.
 // Usage analytics (session_start/question_answered/session_complete/session_closed) are posted
 // to Supabase — see the "Usage analytics" block below and supabase/schema.sql for the table + RLS.
@@ -12,7 +13,7 @@ let state = { responses: {}, roundScore: 0, current: 0 };
 
 const appEl = document.getElementById("app");
 const pipsEl = document.getElementById("pips");
-const voiceBtn = document.getElementById("voice-btn");
+const backBtn = document.getElementById("back-btn");
 const sessionTimerEl = document.getElementById("session-timer");
 const sessionTimerText = sessionTimerEl.querySelector("span");
 
@@ -21,24 +22,16 @@ const sessionTimerText = sessionTimerEl.querySelector("span");
    currentColor so they inherit whatever text colour their container sets.
    ========================================================================= */
 const ICONS = {
-  volumeOn:
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>',
-  volumeOff:
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>',
-  play:
-    '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>',
   chevronDown:
     '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>',
+  chevronLeft:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>',
   close:
     '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
   search:
     '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
   eye:
     '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
-  chat:
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>',
-  code:
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>',
   user:
     '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
   bag:
@@ -49,8 +42,6 @@ const ICONS = {
     '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
   helpCircle:
     '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-  bot:
-    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3"></path><rect x="4" y="7" width="16" height="13" rx="3"></rect><line x1="9" y1="13" x2="9" y2="14"></line><line x1="15" y1="13" x2="15" y2="14"></line><path d="M4 13H2"></path><path d="M22 13h-2"></path></svg>',
   sparkle:
     '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z"></path></svg>',
 };
@@ -59,8 +50,6 @@ let screenEls = [];
 let activeRoundTimer = null;
 let sessionInterval = null;
 let sessionRemaining = SESSION_SECONDS;
-let voiceMuted = false;
-let currentAudioFile = null;
 
 /* =========================================================================
    Usage analytics — anonymous, append-only events posted straight to
@@ -72,8 +61,8 @@ let currentAudioFile = null;
 const SUPABASE_URL = "https://bdjyrgnwedpkrrclzxwe.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_h-ZVHHb7WXe-XimcyaKdCA_YQwAAL1I";
 const ANALYTICS_ENDPOINT = `${SUPABASE_URL}/rest/v1/game_events`;
-const SCREEN_NAMES = ["title", "details", "worry", "round1", "round2", "round3", "round4", "score", "reflection", "close"];
-const ROUND_SCREEN_NAMES = { 1: "round1", 2: "round2", 3: "round3", 4: "round4" };
+const SCREEN_NAMES = ["title", "details", "worry", "challenge1_intro", "round1", "round2", "score", "reflection", "close"];
+const ROUND_SCREEN_NAMES = { 1: "round1", 2: "round2" };
 
 let sessionId = null;
 let sessionEnded = false;
@@ -86,25 +75,92 @@ function makeSessionId() {
   });
 }
 
+/* =========================================================================
+   School + salesperson attribution — read once from ?school=CODE (e.g.
+   ?school=DPS_NOIDA) on load. The code is only ever used to look up a
+   matching row in the `schools` table (see supabase/schema.sql); nothing
+   from the URL is stored or sent anywhere directly. A missing/malformed/
+   unknown/inactive code silently resolves to "no attribution" — parents and
+   teachers are never asked about school or salesperson. Once resolved,
+   the school_id/salesperson_id are cached in sessionStorage so a same-tab
+   refresh keeps attribution without the URL needing to still carry it, and
+   trackEvent() below stamps them onto every analytics event automatically.
+   ========================================================================= */
+const SCHOOL_ATTRIBUTION_KEY = "kg_school_attribution_v1";
+const SCHOOL_CODE_PATTERN = /^[A-Z0-9_-]{2,40}$/;
+
+function readStoredAttribution() {
+  try {
+    const raw = sessionStorage.getItem(SCHOOL_ATTRIBUTION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+function writeStoredAttribution(attr) {
+  try {
+    if (attr) sessionStorage.setItem(SCHOOL_ATTRIBUTION_KEY, JSON.stringify(attr));
+    else sessionStorage.removeItem(SCHOOL_ATTRIBUTION_KEY);
+  } catch (e) {
+    /* storage unavailable (e.g. private mode) — attribution just won't survive a refresh */
+  }
+}
+async function resolveAttribution() {
+  const rawCode = new URLSearchParams(window.location.search).get("school");
+  if (!rawCode) return readStoredAttribution(); // no param this load — keep whatever was already resolved
+
+  const code = rawCode.trim().toUpperCase();
+  if (!SCHOOL_CODE_PATTERN.test(code)) {
+    writeStoredAttribution(null);
+    return null;
+  }
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/schools?school_code=eq.${encodeURIComponent(code)}&is_active=eq.true&select=id,salesperson_id`;
+    const res = await fetch(url, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    });
+    const rows = res.ok ? await res.json() : [];
+    if (!Array.isArray(rows) || rows.length !== 1) {
+      writeStoredAttribution(null);
+      return null;
+    }
+    const attr = { school_id: rows[0].id, salesperson_id: rows[0].salesperson_id || null };
+    writeStoredAttribution(attr);
+    return attr;
+  } catch (e) {
+    writeStoredAttribution(null);
+    return null;
+  }
+}
+let attribution = null;
+const attributionReady = resolveAttribution().then((a) => {
+  attribution = a;
+});
+
 function trackEvent(eventType, screen, payload) {
   if (!sessionId) return;
-  fetch(ANALYTICS_ENDPOINT, {
-    method: "POST",
-    keepalive: true, // survives page unload — used for the session_closed beacon
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify({
-      session_id: sessionId,
-      event_type: eventType,
-      screen: screen || null,
-      payload: payload || {},
-      user_agent: navigator.userAgent,
-    }),
-  }).catch(() => {});
+  const sid = sessionId;
+  attributionReady.finally(() => {
+    fetch(ANALYTICS_ENDPOINT, {
+      method: "POST",
+      keepalive: true, // survives page unload — used for the session_closed beacon
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        session_id: sid,
+        event_type: eventType,
+        screen: screen || null,
+        payload: payload || {},
+        user_agent: navigator.userAgent,
+        school_id: attribution ? attribution.school_id : null,
+        salesperson_id: attribution ? attribution.salesperson_id : null,
+      }),
+    }).catch(() => {});
+  });
 }
 
 function trackSessionClosed() {
@@ -121,7 +177,8 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("pagehide", trackSessionClosed);
 
 /* =========================================================================
-   Sound effects — synthesized with WebAudio, no files required.
+   Sound effects — synthesized with WebAudio, no files required. Short UI
+   confirmation sounds only — no spoken narration anywhere in the app.
    ========================================================================= */
 let audioCtx = null;
 function ensureAudio() {
@@ -158,41 +215,7 @@ const sfx = {
 };
 
 /* =========================================================================
-   Narrator voice — prefers a matching mp3 in "Voice assets/", falls back to
-   the browser's built-in speech synthesis. Toggled by the voice button.
-   ========================================================================= */
-function stopNarration() {
-  if (currentAudioFile) {
-    currentAudioFile.pause();
-    currentAudioFile = null;
-  }
-  if ("speechSynthesis" in window) speechSynthesis.cancel();
-}
-function fallbackSpeak(text) {
-  if (voiceMuted || !("speechSynthesis" in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.98;
-  u.pitch = 1.0;
-  const voices = speechSynthesis.getVoices();
-  const preferred =
-    voices.find((v) => /en/i.test(v.lang) && /female/i.test(v.name)) || voices.find((v) => /en/i.test(v.lang));
-  if (preferred) u.voice = preferred;
-  speechSynthesis.speak(u);
-}
-function speakLine(id) {
-  if (voiceMuted) return;
-  stopNarration();
-  const text = NARRATION[id];
-  if (!text) return;
-  const audio = new Audio(encodeURI(`Voice assets/${id}.mp3`));
-  currentAudioFile = audio;
-  audio.addEventListener("canplaythrough", () => audio.play().catch(() => fallbackSpeak(text)));
-  audio.addEventListener("error", () => fallbackSpeak(text));
-  audio.load();
-}
-
-/* =========================================================================
-   Image helper — degrades to an emoji if a file is missing/unloadable.
+   Image helper — degrades to an icon if a file is missing/unloadable.
    ========================================================================= */
 window.handleImgError = function (imgEl, iconKey) {
   const div = document.createElement("div");
@@ -214,7 +237,7 @@ function monoBadge(isGood) {
 
 /* =========================================================================
    Session timer — 3:00 countdown, top-right. Never blocks; on expiry it
-   gently locks any unanswered rounds and jumps to the reveal.
+   gently locks any unanswered challenges and jumps to the reveal.
    ========================================================================= */
 function updateSessionDisplay() {
   const clamped = Math.max(sessionRemaining, 0);
@@ -237,16 +260,14 @@ function startSessionTimer() {
   }, 1000);
 }
 function handleSessionTimeout() {
-  if (!state.responses.r1) recordRoundAnswer(1, null, false, SESSION_SECONDS * 1000);
-  if (!state.responses.r2) recordRoundAnswer(2, null, false, SESSION_SECONDS * 1000);
-  if (!state.responses.r3) recordRoundAnswer(3, null, false, SESSION_SECONDS * 1000);
-  if (!state.responses.r4) recordRoundAnswer(4, null, false, SESSION_SECONDS * 1000);
-  if (state.current < 7) goTo(7);
+  if (!state.responses.r1 && challenge1Api) challenge1Api.forceFinish(true);
+  if (!state.responses.r2) recordRoundAnswer(2, null, false, CHALLENGE2.timerSeconds * 1000);
+  if (state.current < 6) goTo(6);
 }
 
 /* =========================================================================
-   Round ring timer — reusable ~15-20s countdown ring. A slow tap never
-   fails; on expiry it auto-locks a guess so the round always resolves.
+   Ring timer — reusable countdown ring shared by both challenges. A slow
+   tap never fails; on expiry it auto-locks a guess so it always resolves.
    ========================================================================= */
 function startRingTimer(screenEl, seconds, onExpire) {
   const fill = screenEl.querySelector(".timer-ring-fill");
@@ -295,12 +316,18 @@ function recordRoundAnswer(roundNum, choice, correct, ms) {
   updatePips();
   trackEvent("question_answered", ROUND_SCREEN_NAMES[roundNum], { choice, correct, ms, auto: choice === null });
 }
+function recordChallenge1Result(score, answers, timedOut) {
+  state.responses.r1 = { score, scoreMax: CHALLENGE1.scoreMax, answers, timedOut };
+  state.roundScore += score;
+  updatePips();
+  trackEvent("question_answered", ROUND_SCREEN_NAMES[1], { score, scoreMax: CHALLENGE1.scoreMax, answers, timedOut });
+}
 
 /* =========================================================================
-   Progress pips (4-segment, top bar centre) — one per round.
+   Progress pips (2-segment, top bar centre) — one per challenge.
    ========================================================================= */
 function updatePips() {
-  const roundForScreen = { 3: 0, 4: 1, 5: 2, 6: 3 };
+  const roundForScreen = { 4: 0, 5: 1 };
   const pips = pipsEl.querySelectorAll(".pip");
   pips.forEach((pip, i) => {
     const answered = !!state.responses["r" + (i + 1)];
@@ -326,12 +353,20 @@ function burstConfetti(container) {
   }
 }
 
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 /* =========================================================================
    Screen builders — each returns an HTML string for its .screen div.
    ========================================================================= */
 
 // ----- Screen 0 · Title ---------------------------------------------------
-function renderScreen0() {
+function renderTitle() {
   return `
     <div class="screen-content center">
       <div class="grow"></div>
@@ -340,23 +375,28 @@ function renderScreen0() {
       <h1 class="title-hero">${TITLE.title}</h1>
       <p class="subtitle">${TITLE.subtitle}</p>
       <div class="grow"></div>
-      <button class="btn btn-amber" id="s0-cta" style="width:100%;">${ICONS.play} ${TITLE.cta}</button>
+      <button class="btn btn-amber" id="s0-cta" style="width:100%;">${TITLE.cta}</button>
     </div>`;
 }
-function attachScreen0(el) {
+function attachTitle(el) {
   el.querySelector("#s0-cta").addEventListener("click", () => {
     sfx.click();
     state = { responses: {}, roundScore: 0, current: 0 };
     sessionId = makeSessionId();
     sessionEnded = false;
+    // Screens are built once and reused (their attach() closures hold
+    // per-playthrough state like "confirmed"/"selected"). The back button
+    // makes it possible to return here and start over mid-session, so a
+    // full rebuild is required — otherwise other screens would still think
+    // their old answers/timers are live even though `state` was just reset.
+    buildAllScreens();
     trackEvent("session_start", "title", { referrer: document.referrer || null });
     goTo(1);
   });
 }
 
-// ----- Screen 1 · Parent details (capture #1) -------------------------------
-function renderScreenDetails() {
-  const stateOptions = INDIA_GEO.map((s) => `<option value="${s.state}">${s.state}</option>`).join("");
+// ----- Screen 1 · Parent details — name + grade only (capture #1) ---------
+function renderDetails() {
   const gradeOptions = GRADE_OPTIONS.map((g) => `<option value="${g}">${g}</option>`).join("");
   return `
     <div class="screen-content">
@@ -375,67 +415,23 @@ function renderScreenDetails() {
             ${gradeOptions}
           </select>
         </div>
-        <div class="field">
-          <label for="d-phone">${DETAILS_Q.fields.phone.label}</label>
-          <div class="phone-input-wrap">
-            <span class="phone-prefix">+91</span>
-            <input type="tel" id="d-phone" inputmode="numeric" maxlength="10" placeholder="${DETAILS_Q.fields.phone.placeholder}" autocomplete="tel-national">
-          </div>
-          <span class="field-hint" id="d-phone-hint">${DETAILS_Q.phoneHint}</span>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="d-state">${DETAILS_Q.fields.state.label}</label>
-            <select id="d-state">
-              <option value="" disabled selected>${DETAILS_Q.fields.state.placeholder}</option>
-              ${stateOptions}
-            </select>
-          </div>
-          <div class="field">
-            <label for="d-city">${DETAILS_Q.fields.city.label}</label>
-            <select id="d-city" disabled>
-              <option value="" disabled selected>${DETAILS_Q.fields.city.placeholder}</option>
-            </select>
-          </div>
-        </div>
       </div>
       <button class="btn btn-amber" id="sd-cta" disabled style="width:100%;">${DETAILS_Q.cta}</button>
     </div>`;
 }
-function attachScreenDetails(el) {
+function attachDetails(el) {
   const nameInput = el.querySelector("#d-name");
   const gradeSelect = el.querySelector("#d-grade");
-  const phoneInput = el.querySelector("#d-phone");
-  const phoneHint = el.querySelector("#d-phone-hint");
-  const stateSelect = el.querySelector("#d-state");
-  const citySelect = el.querySelector("#d-city");
   const ctaBtn = el.querySelector("#sd-cta");
 
   function validate() {
-    const phoneDigits = phoneInput.value.replace(/\D/g, "");
-    const phoneOk = phoneDigits.length === 10;
-    const allOk = nameInput.value.trim().length > 0 && !!gradeSelect.value && phoneOk && !!stateSelect.value && !!citySelect.value;
-    phoneHint.classList.toggle("valid", phoneOk);
-    phoneHint.classList.toggle("invalid", phoneInput.value.length > 0 && !phoneOk);
+    const allOk = nameInput.value.trim().length > 0 && !!gradeSelect.value;
     ctaBtn.disabled = !allOk;
     return allOk;
   }
 
   nameInput.addEventListener("input", validate);
   gradeSelect.addEventListener("change", validate);
-  phoneInput.addEventListener("input", () => {
-    phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 10);
-    validate();
-  });
-  stateSelect.addEventListener("change", () => {
-    const found = INDIA_GEO.find((s) => s.state === stateSelect.value);
-    citySelect.innerHTML =
-      `<option value="" disabled selected>${DETAILS_Q.fields.city.placeholder}</option>` +
-      (found ? found.cities.map((c) => `<option value="${c}">${c}</option>`).join("") : "");
-    citySelect.disabled = !found;
-    validate();
-  });
-  citySelect.addEventListener("change", validate);
 
   ctaBtn.addEventListener("click", () => {
     if (!validate()) return;
@@ -443,9 +439,6 @@ function attachScreenDetails(el) {
     state.responses.details = {
       name: nameInput.value.trim(),
       grade: gradeSelect.value,
-      phone: "+91" + phoneInput.value,
-      state: stateSelect.value,
-      city: citySelect.value,
     };
     trackEvent("question_answered", "details", state.responses.details);
     sessionId = sessionId || makeSessionId();
@@ -453,190 +446,368 @@ function attachScreenDetails(el) {
     goTo(2);
   });
 }
-function onEnterScreenDetails() {
-  speakLine("s_details_prompt");
-}
 
-// ----- Screen 1 · The honest question (capture #1) -------------------------
-function renderScreen1() {
+// ----- Screen 2 · The honest question — shown as a pop-up (capture #2) ----
+function renderWorry() {
   const opts = WORRY_Q.options
     .map((o) => `<button class="option-btn" data-id="${o.id}">${o.label}</button>`)
     .join("");
   return `
-    <div class="screen-content">
+    <div class="popup-scrim"></div>
+    <div class="screen-content center">
       <div class="card glass-tile">
         <div class="eyebrow">${WORRY_Q.eyebrow}</div>
         <p>${WORRY_Q.prompt}</p>
-        <div class="option-list">${opts}</div>
+        <div class="option-list" id="wq-options">${opts}</div>
+        <p class="aha-box hidden" id="wq-ack">${WORRY_Q.ack}</p>
+        <button class="btn btn-amber" id="wq-continue" disabled style="width:100%;">${WORRY_Q.cta}</button>
       </div>
-      <div class="aha-box hidden" id="s1-ack">${WORRY_Q.ack}</div>
     </div>`;
 }
-function attachScreen1(el) {
-  const buttons = el.querySelectorAll(".option-btn");
+function attachWorry(el) {
+  const buttons = Array.from(el.querySelectorAll("#wq-options .option-btn"));
+  const continueBtn = el.querySelector("#wq-continue");
+  const ackEl = el.querySelector("#wq-ack");
+  let selected = state.responses.worry || null;
+  let confirmed = !!state.responses.worry;
+
+  function paintSelection() {
+    buttons.forEach((b) => b.classList.toggle("selected", b.dataset.id === selected));
+    continueBtn.disabled = !selected;
+  }
+  function lockIn() {
+    confirmed = true;
+    buttons.forEach((b) => {
+      b.disabled = true;
+      b.classList.toggle("correct", b.dataset.id === selected);
+    });
+    ackEl.classList.remove("hidden");
+    continueBtn.textContent = "Continue";
+  }
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
+      if (confirmed) return;
       sfx.click();
-      buttons.forEach((b) => (b.disabled = true));
-      btn.classList.add("correct");
-      state.responses.worry = btn.dataset.id;
-      trackEvent("question_answered", "worry", { choice: btn.dataset.id });
-      el.querySelector("#s1-ack").classList.remove("hidden");
-      speakLine("s_worry_ack");
-      setTimeout(() => goTo(3), 1200);
+      selected = btn.dataset.id;
+      paintSelection();
     });
   });
-}
-function onEnterScreen1() {
-  speakLine("s_worry_prompt");
+  continueBtn.addEventListener("click", () => {
+    if (!selected) return;
+    if (!confirmed) {
+      sfx.click();
+      state.responses.worry = selected;
+      trackEvent("question_answered", "worry", { choice: selected });
+      lockIn();
+      setTimeout(() => goTo(3), 900);
+      return;
+    }
+    sfx.whoosh();
+    goTo(3);
+  });
+  if (confirmed) lockIn();
+  paintSelection();
 }
 
-// ----- Screen 2 · Round 1 · Real or AI? (capture #2) ------------------------
-let round1Order = null;
-function renderScreen2() {
-  if (!round1Order) {
-    round1Order = Math.random() < 0.5 ? ["real", "aiFake"] : ["aiFake", "real"];
-  }
-  const cardHtml = (kind) => {
-    const src = kind === "real" ? ASSETS.realPortrait : ASSETS.aiFakePortrait;
-    return `<div class="portrait-card glass-tile" data-kind="${kind}">${imgTag(src, "user", "card-img")}</div>`;
-  };
+// ----- Screen 3 · "Take Challenge 1" interstitial --------------------------
+function renderChallenge1Intro() {
   return `
-    <div class="screen-content">
-      <div class="round-banner">
-        <span class="round-banner-icon">${ICONS[ROUND1.iconKey]}</span>
-        <span class="round-banner-label">${ROUND1.banner}</span>
-        <div class="timer-ring-wrap">
-          <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
-          <div class="timer-ring-num">${ROUND1.timerSeconds}</div>
-        </div>
-      </div>
-      <p>${ROUND1.prompt}</p>
-      <div class="portrait-row">${round1Order.map(cardHtml).join("")}</div>
-      <p class="reveal-caption hidden" id="r1-caption">${ROUND1.captionOnFake}</p>
-      <div class="aha-box hidden" id="r1-aha">${ROUND1.aha}</div>
-      <button class="btn btn-amber hidden" id="r1-next" style="width:100%;">Next round →</button>
+    <div class="screen-content center">
+      <div class="grow"></div>
+      <div class="eyebrow">${CHALLENGE1_INTRO.eyebrow}</div>
+      <h1 class="title-hero">${CHALLENGE1_INTRO.title}</h1>
+      <p class="subtitle">${CHALLENGE1_INTRO.sub}</p>
+      <div class="grow"></div>
+      <button class="btn btn-amber" id="c1i-cta" style="width:100%;">${CHALLENGE1_INTRO.cta}</button>
     </div>`;
 }
-function attachScreen2(el) {
-  const cards = el.querySelectorAll(".portrait-card");
-  let selectedCard = null;
-  function resolve(kind, ms) {
-    stopRingTimer();
-    const correct = kind === "aiFake";
-    cards.forEach((c) => {
-      c.style.pointerEvents = "none";
-      if (c.dataset.kind === "aiFake") {
-        c.classList.add("correct");
-        c.insertAdjacentHTML("beforeend", monoBadge(true));
-      } else if (c === selectedCard) {
-        c.classList.add("wrong");
-        c.insertAdjacentHTML("beforeend", monoBadge(false));
-      }
-    });
-    el.querySelector("#r1-caption").classList.remove("hidden");
-    el.querySelector("#r1-aha").classList.remove("hidden");
-    el.querySelector("#r1-next").classList.remove("hidden");
-    correct ? sfx.correct() : sfx.wrong();
-    speakLine(correct ? "s_r1_reveal_correct" : "s_r1_reveal_wrong");
-    recordRoundAnswer(1, kind, correct, ms);
-  }
-  cards.forEach((card) => {
-    card.addEventListener("click", () => {
-      if (state.responses.r1) return;
-      sfx.click();
-      selectedCard = card;
-      resolve(card.dataset.kind, activeRoundTimer ? activeRoundTimer.elapsedMs() : 0);
-    });
-  });
-  el.querySelector("#r1-next").addEventListener("click", () => {
-    sfx.whoosh();
+function attachChallenge1Intro(el) {
+  el.querySelector("#c1i-cta").addEventListener("click", () => {
+    sfx.click();
     goTo(4);
   });
 }
-function onEnterScreen2(el) {
-  speakLine("s_r1_prompt");
-  startRingTimer(el, ROUND1.timerSeconds, () => {
-    const cards = el.querySelectorAll(".portrait-card");
-    const randomPick = cards[Math.floor(Math.random() * cards.length)];
-    randomPick.click();
+
+// ----- Screen 4 · Challenge 1 · Real or AI? (capture #3) ------------------
+let challenge1Api = null;
+function renderChallenge1() {
+  return `
+    <div class="screen-content">
+      <div class="round-banner">
+        <span class="round-banner-icon">${ICONS[CHALLENGE1.iconKey]}</span>
+        <span class="round-banner-label">${CHALLENGE1.banner}</span>
+        <div class="timer-ring-wrap">
+          <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
+          <div class="timer-ring-num">${CHALLENGE1.timerSeconds}</div>
+        </div>
+      </div>
+      <p>${CHALLENGE1.instructions}</p>
+      <div class="kg-progress" id="c1-progress">Image 1 of ${CHALLENGE1.images.length}</div>
+      <div class="ch1-image-wrap glass-tile">
+        <img id="c1-img" alt="">
+        <div class="img-fallback hidden" id="c1-img-fallback">${ICONS.user}</div>
+      </div>
+      <div class="kg-swipe-actions">
+        <button class="kg-action-btn kg-action-fake" data-id="ai">${ICONS.close}<span>AI</span></button>
+        <button class="kg-action-btn kg-action-confused" data-id="confused">${ICONS.helpCircle}<span>It's confusing</span></button>
+        <button class="kg-action-btn kg-action-real" data-id="real">${ICONS.check}<span>Real</span></button>
+      </div>
+      <p class="reveal-caption hidden" id="c1-explain"></p>
+      <button class="btn btn-amber" id="c1-confirm" disabled style="width:100%;">Confirm answer</button>
+      <button class="btn btn-amber hidden" id="c1-next" style="width:100%;">Next round →</button>
+    </div>`;
+}
+function attachChallenge1(el) {
+  const progressEl = el.querySelector("#c1-progress");
+  const imgEl = el.querySelector("#c1-img");
+  const fallbackEl = el.querySelector("#c1-img-fallback");
+  const explainEl = el.querySelector("#c1-explain");
+  const confirmBtn = el.querySelector("#c1-confirm");
+  const nextBtn = el.querySelector("#c1-next");
+  const actionBtns = Array.from(el.querySelectorAll(".kg-action-btn"));
+
+  let deck = null;
+  let index = 0;
+  let answers = {};
+  let score = 0;
+  let selected = null;
+  let resolved = false;
+  let advanceTimeoutId = null;
+
+  function lockBoard() {
+    confirmBtn.classList.add("hidden");
+    nextBtn.classList.remove("hidden");
+    actionBtns.forEach((b) => (b.disabled = true));
+  }
+
+  imgEl.addEventListener("error", () => {
+    imgEl.classList.add("hidden");
+    fallbackEl.classList.remove("hidden");
   });
+
+  function showImage(i) {
+    selected = null;
+    const img = deck[i];
+    imgEl.classList.remove("hidden");
+    fallbackEl.classList.add("hidden");
+    imgEl.src = encodeURI(img.src);
+    progressEl.textContent = `Image ${i + 1} of ${deck.length}`;
+    explainEl.classList.add("hidden");
+    confirmBtn.disabled = true;
+    confirmBtn.classList.remove("hidden");
+    nextBtn.classList.add("hidden");
+    actionBtns.forEach((b) => {
+      b.disabled = false;
+      b.classList.remove("selected", "correct", "wrong");
+    });
+  }
+
+  function confirmCurrent(choice) {
+    if (resolved) return;
+    const img = deck[index];
+    const correctId = img.isFake ? "ai" : "real";
+    const correct = choice === correctId;
+    if (correct) score++;
+    answers[img.id] = choice;
+    actionBtns.forEach((b) => {
+      b.disabled = true;
+      if (b.dataset.id === correctId) b.classList.add("correct");
+      else if (b.dataset.id === choice) b.classList.add("wrong");
+    });
+    explainEl.textContent = img.explain;
+    explainEl.classList.remove("hidden");
+    confirmBtn.classList.add("hidden");
+    correct ? sfx.correct() : sfx.wrong();
+    if (index < deck.length - 1) {
+      advanceTimeoutId = setTimeout(() => {
+        advanceTimeoutId = null;
+        index++;
+        showImage(index);
+      }, 1100);
+    } else {
+      stopRingTimer();
+      resolved = true;
+      recordChallenge1Result(score, answers, false);
+      nextBtn.classList.remove("hidden");
+    }
+  }
+
+  actionBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      sfx.click();
+      selected = btn.dataset.id;
+      actionBtns.forEach((b) => b.classList.toggle("selected", b === btn));
+      confirmBtn.disabled = false;
+    });
+  });
+  confirmBtn.addEventListener("click", () => {
+    if (!selected) return;
+    sfx.click();
+    confirmCurrent(selected);
+  });
+  nextBtn.addEventListener("click", () => {
+    sfx.whoosh();
+    goTo(5);
+  });
+
+  function start() {
+    clearTimeout(advanceTimeoutId);
+    advanceTimeoutId = null;
+    deck = shuffleArray(CHALLENGE1.images.slice());
+    index = 0;
+    answers = {};
+    score = 0;
+    resolved = false;
+    showImage(0);
+    startRingTimer(el.closest(".screen"), CHALLENGE1.timerSeconds, () => {
+      if (resolved) return;
+      // Only the image currently on screen might have a pending (unconfirmed)
+      // selection — every later image was never shown, so it's "confused".
+      const currentIndex = index;
+      while (index < deck.length) {
+        const img = deck[index];
+        answers[img.id] = index === currentIndex && selected ? selected : "confused";
+        index++;
+      }
+      score = deck.filter((img) => answers[img.id] === (img.isFake ? "ai" : "real")).length;
+      resolved = true;
+      clearTimeout(advanceTimeoutId);
+      advanceTimeoutId = null;
+      recordChallenge1Result(score, answers, true);
+      lockBoard();
+    });
+  }
+
+  challenge1Api = {
+    start,
+    forceFinish(timedOut) {
+      if (resolved || !deck) return;
+      stopRingTimer();
+      clearTimeout(advanceTimeoutId);
+      advanceTimeoutId = null;
+      resolved = true;
+      recordChallenge1Result(score, answers, timedOut);
+      lockBoard();
+    },
+  };
+}
+function onEnterChallenge1() {
+  if (state.responses.r1) return; // already completed — DOM already shows the reveal state
+  if (challenge1Api) challenge1Api.start();
 }
 
-// ----- Screen 3 · Round 2 · Spot the Trap (capture #3) ----------------------
-function renderScreen3() {
-  const opts = ROUND2.options
+// ----- Screen 5 · Challenge 2 · Spot the Trap (capture #4) ----------------
+function renderChallenge2() {
+  const opts = CHALLENGE2.options
     .map((o) => `<button class="option-btn glass-tile" data-id="${o.id}" data-correct="${o.correct}">${o.label}</button>`)
     .join("");
   const stars = "★★★★★";
-  const reviews = Array.from({ length: ROUND2.card.reviews })
+  const reviews = Array.from({ length: CHALLENGE2.card.reviews })
     .map(() => `<div class="reveal-caption">${stars} “Great deal, ordered instantly!”</div>`)
     .join("");
   return `
     <div class="screen-content">
       <div class="round-banner">
-        <span class="round-banner-icon">${ICONS[ROUND2.iconKey]}</span>
-        <span class="round-banner-label">${ROUND2.banner}</span>
+        <span class="round-banner-icon">${ICONS[CHALLENGE2.iconKey]}</span>
+        <span class="round-banner-label">${CHALLENGE2.banner}</span>
         <div class="timer-ring-wrap">
           <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
-          <div class="timer-ring-num">${ROUND2.timerSeconds}</div>
+          <div class="timer-ring-num">${CHALLENGE2.timerSeconds}</div>
         </div>
       </div>
       <div class="shop-card glass-tile">
         ${imgTag(ASSETS.fakeDealProduct, "bag", "card-img")}
-        <div class="shop-badge">${ROUND2.card.urgency}</div>
-        <div class="shop-timer" id="r2-countdown">${ROUND2.card.countdown}</div>
+        <div class="shop-badge">${CHALLENGE2.card.urgency}</div>
+        <div class="shop-timer" id="c2-countdown">${CHALLENGE2.card.countdown}</div>
         <div class="shop-body">
           <div class="shop-price-row">
-            <span class="shop-mrp">${ROUND2.card.mrp}</span>
-            <span class="shop-price">${ROUND2.card.price}</span>
+            <span class="shop-mrp">${CHALLENGE2.card.mrp}</span>
+            <span class="shop-price">${CHALLENGE2.card.price}</span>
           </div>
           <div class="shop-stars">${stars} (312)</div>
         </div>
       </div>
       ${reviews}
-      <p>${ROUND2.prompt}</p>
-      <div class="option-list">${opts}</div>
-      <p class="reveal-caption hidden" id="r2-reveal">${ROUND2.reveal}</p>
-      <button class="btn btn-amber hidden" id="r2-next" style="width:100%;">Next round →</button>
+      <p>${CHALLENGE2.prompt}</p>
+      <div class="option-list" id="c2-options">${opts}</div>
+      <p class="reveal-caption hidden" id="c2-reveal">${CHALLENGE2.reveal}</p>
+      <button class="btn btn-amber" id="c2-confirm" disabled style="width:100%;">${CHALLENGE2.cta}</button>
+      <button class="btn btn-amber hidden" id="c2-next" style="width:100%;">See your result →</button>
     </div>`;
 }
-function attachScreen3(el) {
-  const buttons = el.querySelectorAll(".option-btn");
-  function resolve(choiceId, ms) {
+function attachChallenge2(el) {
+  const buttons = Array.from(el.querySelectorAll("#c2-options .option-btn"));
+  const confirmBtn = el.querySelector("#c2-confirm");
+  const nextBtn = el.querySelector("#c2-next");
+  let selected = state.responses.r2 ? state.responses.r2.choice : null;
+  let confirmed = !!state.responses.r2;
+
+  function paintSelection() {
+    buttons.forEach((b) => b.classList.toggle("selected", b.dataset.id === selected));
+    confirmBtn.disabled = !selected;
+  }
+  function lockIn(ms) {
     stopRingTimer();
-    const chosen = ROUND2.options.find((o) => o.id === choiceId);
+    confirmed = true;
+    const chosen = CHALLENGE2.options.find((o) => o.id === selected);
     const correct = !!(chosen && chosen.correct);
     buttons.forEach((b) => {
       b.disabled = true;
       if (b.dataset.correct === "true") {
         b.classList.add("correct");
         b.insertAdjacentHTML("beforeend", monoBadge(true));
-      } else if (b.dataset.id === choiceId) {
+      } else if (b.dataset.id === selected) {
         b.classList.add("wrong");
         b.insertAdjacentHTML("beforeend", monoBadge(false));
       }
     });
-    el.querySelector("#r2-reveal").classList.remove("hidden");
-    el.querySelector("#r2-next").classList.remove("hidden");
-    correct ? sfx.correct() : sfx.wrong();
-    speakLine("s_r2_reveal");
-    recordRoundAnswer(2, choiceId, correct, ms);
+    el.querySelector("#c2-reveal").classList.remove("hidden");
+    confirmBtn.classList.add("hidden");
+    nextBtn.classList.remove("hidden");
+    if (ms !== undefined) {
+      correct ? sfx.correct() : sfx.wrong();
+      recordRoundAnswer(2, selected, correct, ms);
+    }
   }
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (state.responses.r2) return;
+      if (confirmed) return;
       sfx.click();
-      resolve(btn.dataset.id, activeRoundTimer ? activeRoundTimer.elapsedMs() : 0);
+      selected = btn.dataset.id;
+      paintSelection();
     });
   });
-  el.querySelector("#r2-next").addEventListener("click", () => {
-    sfx.whoosh();
-    goTo(5);
+  confirmBtn.addEventListener("click", () => {
+    if (!selected) return;
+    sfx.click();
+    lockIn(activeRoundTimer ? activeRoundTimer.elapsedMs() : 0);
   });
+  nextBtn.addEventListener("click", () => {
+    sfx.whoosh();
+    goTo(6);
+  });
+
+  if (confirmed) {
+    buttons.forEach((b) => {
+      b.disabled = true;
+      if (b.dataset.correct === "true") {
+        b.classList.add("correct");
+        b.insertAdjacentHTML("beforeend", monoBadge(true));
+      } else if (b.dataset.id === selected) {
+        b.classList.add("wrong");
+        b.insertAdjacentHTML("beforeend", monoBadge(false));
+      }
+    });
+    el.querySelector("#c2-reveal").classList.remove("hidden");
+    confirmBtn.classList.add("hidden");
+    nextBtn.classList.remove("hidden");
+  }
+  paintSelection();
+
   // cosmetic countdown to sell the "manufactured urgency" — purely decorative
   let secs = 179;
-  const countdownEl = el.querySelector("#r2-countdown");
+  const countdownEl = el.querySelector("#c2-countdown");
   const cosmetic = setInterval(() => {
     if (state.responses.r2 || !document.body.contains(el)) return clearInterval(cosmetic);
     secs = secs > 0 ? secs - 1 : 179;
@@ -644,154 +815,26 @@ function attachScreen3(el) {
     const s = secs % 60;
     countdownEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }, 1000);
-}
-function onEnterScreen3(el) {
-  speakLine("s_r2_prompt");
-  startRingTimer(el, ROUND2.timerSeconds, () => {
-    const buttons = el.querySelectorAll(".option-btn");
-    buttons[Math.floor(Math.random() * buttons.length)].click();
-  });
-}
 
-// ----- Screen 4 · Round 3 · Talk to the Machine (capture #4) ----------------
-function renderScreen4() {
-  const opts = ROUND3.options
-    .map((o) => `<button class="option-btn glass-tile" data-id="${o.id}">${o.label}</button>`)
-    .join("");
-  return `
-    <div class="screen-content">
-      <div class="round-banner">
-        <span class="round-banner-icon">${ICONS[ROUND3.iconKey]}</span>
-        <span class="round-banner-label">${ROUND3.banner}</span>
-        <div class="timer-ring-wrap">
-          <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
-          <div class="timer-ring-num">${ROUND3.timerSeconds}</div>
-        </div>
-      </div>
-      <div class="tutor-avatar-wrap">${imgTag(ASSETS.aiTutorAvatar, "bot", "")}</div>
-      <p>${ROUND3.setup}</p>
-      <div class="option-list" id="r3-options">${opts}</div>
-      <div class="chat-reply-box" id="r3-chat"></div>
-      <div class="aha-box hidden" id="r3-aha">${ROUND3.aha}</div>
-      <button class="btn btn-amber hidden" id="r3-next" style="width:100%;">Next round →</button>
-    </div>`;
+  el._c2Timeout = () => {
+    if (confirmed) return;
+    if (!selected) {
+      const buttonsLeft = buttons.filter((b) => !b.disabled);
+      selected = buttonsLeft[Math.floor(Math.random() * buttonsLeft.length)].dataset.id;
+    }
+    lockIn(CHALLENGE2.timerSeconds * 1000);
+  };
 }
-function attachScreen4(el) {
-  const buttons = el.querySelectorAll(".option-btn");
-  const chatBox = el.querySelector("#r3-chat");
-  function resolve(choiceId, ms) {
-    stopRingTimer();
-    const chosen = ROUND3.options.find((o) => o.id === choiceId);
-    const correct = !!(chosen && chosen.correct);
-    buttons.forEach((b) => {
-      b.disabled = true;
-      if (b.dataset.id === choiceId) {
-        b.classList.add(correct ? "correct" : "wrong");
-        b.insertAdjacentHTML("beforeend", monoBadge(correct));
-      }
-    });
-    chatBox.innerHTML = `<div class="chat-bubble-user">${chosen.label}</div><div class="typing-dots"><span></span><span></span><span></span></div>`;
-    setTimeout(() => {
-      chatBox.innerHTML = `<div class="chat-bubble-user">${chosen.label}</div><div class="chat-bubble-ai">${chosen.reply}</div>`;
-      el.querySelector("#r3-aha").classList.remove("hidden");
-      el.querySelector("#r3-next").classList.remove("hidden");
-      correct ? sfx.correct() : sfx.wrong();
-      speakLine("s_r3_aha");
-    }, 700);
-    recordRoundAnswer(3, choiceId, correct, ms);
-  }
-  buttons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (state.responses.r3) return;
-      sfx.click();
-      resolve(btn.dataset.id, activeRoundTimer ? activeRoundTimer.elapsedMs() : 0);
-    });
-  });
-  el.querySelector("#r3-next").addEventListener("click", () => {
-    sfx.whoosh();
-    goTo(6);
-  });
-}
-function onEnterScreen4(el) {
-  speakLine("s_r3_prompt");
-  startRingTimer(el, ROUND3.timerSeconds, () => {
-    const buttons = el.querySelectorAll(".option-btn");
-    buttons[Math.floor(Math.random() * buttons.length)].click();
-  });
-}
-
-// ----- Screen 5 · Round 4 · Bug Hunt (capture #5) ---------------------------
-function renderScreen5() {
-  const stepsHtml = ROUND4.steps
-    .map((s, i) => `<div class="step-row"><span class="step-num">${i + 1}</span>${s}</div>`)
-    .join("");
-  const opts = ROUND4.options
-    .map((o) => `<button class="option-btn glass-tile" data-id="${o.id}" data-correct="${o.correct}">${o.label}</button>`)
-    .join("");
-  return `
-    <div class="screen-content">
-      <div class="round-banner">
-        <span class="round-banner-icon">${ICONS[ROUND4.iconKey]}</span>
-        <span class="round-banner-label">${ROUND4.banner}</span>
-        <div class="timer-ring-wrap">
-          <svg viewBox="0 0 44 44"><circle class="timer-ring-track" cx="22" cy="22" r="18"/><circle class="timer-ring-fill" cx="22" cy="22" r="18"/></svg>
-          <div class="timer-ring-num">${ROUND4.timerSeconds}</div>
-        </div>
-      </div>
-      <p>${ROUND4.setup}</p>
-      <div class="steps-card glass-tile">${stepsHtml}</div>
-      <div class="option-list">${opts}</div>
-      <p class="reveal-caption hidden" id="r4-reveal">${ROUND4.reveal}</p>
-      <div class="aha-box hidden" id="r4-aha">${ROUND4.aha}</div>
-      <button class="btn btn-amber hidden" id="r4-next" style="width:100%;">See your result →</button>
-    </div>`;
-}
-function attachScreen5(el) {
-  const buttons = el.querySelectorAll(".option-btn");
-  function resolve(choiceId, ms) {
-    stopRingTimer();
-    const chosen = ROUND4.options.find((o) => o.id === choiceId);
-    const correct = !!(chosen && chosen.correct);
-    buttons.forEach((b) => {
-      b.disabled = true;
-      if (b.dataset.correct === "true") {
-        b.classList.add("correct");
-        b.insertAdjacentHTML("beforeend", monoBadge(true));
-      } else if (b.dataset.id === choiceId) {
-        b.classList.add("wrong");
-        b.insertAdjacentHTML("beforeend", monoBadge(false));
-      }
-    });
-    el.querySelector("#r4-reveal").classList.remove("hidden");
-    el.querySelector("#r4-aha").classList.remove("hidden");
-    el.querySelector("#r4-next").classList.remove("hidden");
-    correct ? sfx.correct() : sfx.wrong();
-    speakLine("s_r4_reveal");
-    recordRoundAnswer(4, choiceId, correct, ms);
-  }
-  buttons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (state.responses.r4) return;
-      sfx.click();
-      resolve(btn.dataset.id, activeRoundTimer ? activeRoundTimer.elapsedMs() : 0);
-    });
-  });
-  el.querySelector("#r4-next").addEventListener("click", () => {
-    sfx.whoosh();
-    goTo(7);
-  });
-}
-function onEnterScreen5(el) {
-  speakLine("s_r4_prompt");
-  startRingTimer(el, ROUND4.timerSeconds, () => {
-    const buttons = el.querySelectorAll(".option-btn");
-    buttons[Math.floor(Math.random() * buttons.length)].click();
+function onEnterChallenge2(el) {
+  if (state.responses.r2) return; // already completed — DOM already shows the reveal state
+  startRingTimer(el, CHALLENGE2.timerSeconds, () => {
+    if (el._c2Timeout) el._c2Timeout();
   });
 }
 
 // ----- Screen 6 · The reveal — score + skill map ----------------------------
-function renderScreen6() {
-  const rounds = [ROUND1, ROUND2, ROUND3, ROUND4];
+function renderScore() {
+  const rounds = [CHALLENGE1, CHALLENGE2];
   const rows = rounds
     .map(
       (r) => `
@@ -819,23 +862,22 @@ function renderScreen6() {
       <button class="btn btn-amber" id="s6-continue" style="width:100%;">Continue →</button>
     </div>`;
 }
-function attachScreen6(el) {
+function attachScore(el) {
   el.querySelectorAll(".skill-row").forEach((row) => row.addEventListener("click", () => sfx.click()));
   el.querySelector("#s6-continue").addEventListener("click", () => {
     sfx.whoosh();
-    goTo(8);
+    goTo(7);
   });
 }
-function onEnterScreen6(el) {
+function onEnterScore(el) {
   const score = state.roundScore;
   const band = SCORE_BANDS.find((b) => score >= b.min && score <= b.max) || SCORE_BANDS[0];
   el.querySelector("#s6-score").textContent = `You scored ${score} / ${SCORE_MAX}.`;
   el.querySelector("#s6-headline").textContent = band.headline;
-  speakLine("s_score");
 }
 
-// ----- Screen 7 · Reflection (capture #6) -----------------------------------
-function renderScreen7() {
+// ----- Screen 7 · Reflection (capture #5) -----------------------------------
+function renderReflection() {
   const opts = REFLECTION_Q.options
     .map((o) => `<button class="option-btn glass-tile" data-id="${o.id}">${o.label}</button>`)
     .join("");
@@ -844,35 +886,58 @@ function renderScreen7() {
       <div class="card glass-tile">
         <div class="eyebrow">${REFLECTION_Q.eyebrow}</div>
         <p>${REFLECTION_Q.prompt}</p>
-        <div class="option-list">${opts}</div>
+        <div class="option-list" id="s7-options">${opts}</div>
       </div>
+      <button class="btn btn-amber" id="s7-confirm" disabled style="width:100%;">${REFLECTION_Q.cta}</button>
       <button class="btn btn-amber hidden" id="s7-continue" style="width:100%;">Continue →</button>
     </div>`;
 }
-function attachScreen7(el) {
-  const buttons = el.querySelectorAll(".option-btn");
+function attachReflection(el) {
+  const buttons = Array.from(el.querySelectorAll("#s7-options .option-btn"));
+  const confirmBtn = el.querySelector("#s7-confirm");
+  const continueBtn = el.querySelector("#s7-continue");
+  let selected = state.responses.reflection || null;
+  let confirmed = !!state.responses.reflection;
+
+  function paintSelection() {
+    buttons.forEach((b) => b.classList.toggle("selected", b.dataset.id === selected));
+    confirmBtn.disabled = !selected;
+  }
+  function lockIn() {
+    confirmed = true;
+    buttons.forEach((b) => {
+      b.disabled = true;
+      b.classList.toggle("correct", b.dataset.id === selected);
+    });
+    confirmBtn.classList.add("hidden");
+    continueBtn.classList.remove("hidden");
+  }
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
+      if (confirmed) return;
       sfx.click();
-      buttons.forEach((b) => (b.disabled = true));
-      btn.classList.add("correct");
-      state.responses.reflection = btn.dataset.id;
-      state.responses.score = state.roundScore;
-      state.responses.ts = new Date().toISOString();
-      sendResults();
-      trackEvent("question_answered", "reflection", { choice: btn.dataset.id });
-      trackEvent("session_complete", "reflection", state.responses);
-      sessionEnded = true;
-      el.querySelector("#s7-continue").classList.remove("hidden");
+      selected = btn.dataset.id;
+      paintSelection();
     });
   });
-  el.querySelector("#s7-continue").addEventListener("click", () => {
-    sfx.whoosh();
-    goTo(9);
+  confirmBtn.addEventListener("click", () => {
+    if (!selected) return;
+    sfx.click();
+    state.responses.reflection = selected;
+    state.responses.score = state.roundScore;
+    state.responses.ts = new Date().toISOString();
+    sendResults();
+    trackEvent("question_answered", "reflection", { choice: selected });
+    trackEvent("session_complete", "reflection", state.responses);
+    sessionEnded = true;
+    lockIn();
   });
-}
-function onEnterScreen7() {
-  speakLine("s_reflection_prompt");
+  continueBtn.addEventListener("click", () => {
+    sfx.whoosh();
+    goTo(8);
+  });
+  if (confirmed) lockIn();
+  paintSelection();
 }
 function sendResults() {
   if (!WEBHOOK_URL) return;
@@ -884,7 +949,7 @@ function sendResults() {
 }
 
 // ----- Screen 8 · Close ------------------------------------------------------
-function renderScreen8() {
+function renderClose() {
   return `
     <div class="screen-content center" id="s8-container" style="position:relative;overflow:hidden;">
       <div class="grow"></div>
@@ -896,10 +961,11 @@ function renderScreen8() {
       <button class="link-text" id="s8-share">${CLOSE.ctaShare}</button>
     </div>`;
 }
-function attachScreen8(el) {
+function attachClose(el) {
   el.querySelector("#s8-primary").addEventListener("click", () => {
     sfx.click();
-    openMissionModal();
+    if (state.responses.phone) openMissionModal();
+    else openPhoneGate(() => openMissionModal());
   });
   el.querySelector("#s8-replay").addEventListener("click", () => {
     sfx.click();
@@ -911,16 +977,87 @@ function attachScreen8(el) {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   });
 }
-function onEnterScreen8(el) {
+function onEnterClose(el) {
   sfx.celebrate();
-  speakLine("s_close");
   burstConfetti(el.querySelector("#s8-container"));
 }
 
 /* =========================================================================
+   Phone gate — shown once, only if the parent taps "See the full mission
+   list", so a phone number is only ever asked for right when it's needed
+   (never up front). Reuses the same sheet chrome as the mission modal.
+   ========================================================================= */
+function renderPhoneGate() {
+  return `
+    <div class="mm-overlay" id="phone-gate">
+      <div class="mm-sheet">
+        <div class="mm-header">
+          <div>
+            <div class="mm-title">${PHONE_GATE.title}</div>
+            <div class="mm-sub">${PHONE_GATE.sub}</div>
+          </div>
+          <button class="mm-close" id="pg-close-btn" aria-label="Close">${ICONS.close}</button>
+        </div>
+        <div class="mm-body">
+          <div class="field">
+            <label for="pg-phone">${PHONE_GATE.field.label}</label>
+            <div class="phone-input-wrap">
+              <span class="phone-prefix">+91</span>
+              <input type="tel" id="pg-phone" inputmode="numeric" maxlength="10" placeholder="${PHONE_GATE.field.placeholder}" autocomplete="tel-national">
+            </div>
+            <span class="field-hint" id="pg-phone-hint">${PHONE_GATE.hint}</span>
+          </div>
+          <button class="btn btn-amber" id="pg-cta" disabled style="width:100%;">${PHONE_GATE.cta}</button>
+        </div>
+      </div>
+    </div>`;
+}
+function closePhoneGate(modal) {
+  modal.classList.remove("open");
+  setTimeout(() => modal.remove(), 260);
+}
+function openPhoneGate(onSuccess) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = renderPhoneGate();
+  const modal = wrap.firstElementChild;
+  document.getElementById("phone").appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add("open"));
+
+  const phoneInput = modal.querySelector("#pg-phone");
+  const phoneHint = modal.querySelector("#pg-phone-hint");
+  const ctaBtn = modal.querySelector("#pg-cta");
+
+  function validate() {
+    const digits = phoneInput.value.replace(/\D/g, "");
+    const ok = digits.length === 10;
+    phoneHint.classList.toggle("valid", ok);
+    phoneHint.classList.toggle("invalid", phoneInput.value.length > 0 && !ok);
+    ctaBtn.disabled = !ok;
+    return ok;
+  }
+  phoneInput.addEventListener("input", () => {
+    phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 10);
+    validate();
+  });
+  modal.querySelector("#pg-close-btn").addEventListener("click", () => closePhoneGate(modal));
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closePhoneGate(modal);
+  });
+  ctaBtn.addEventListener("click", () => {
+    if (!validate()) return;
+    sfx.click();
+    state.responses.phone = "+91" + phoneInput.value;
+    trackEvent("question_answered", "phone_gate", { phone: state.responses.phone });
+    closePhoneGate(modal);
+    onSuccess();
+  });
+}
+
+/* =========================================================================
    Mission map sheet — the full grade-by-grade mission list, opened from the
-   close screen's "See the full mission list" CTA. Rendered natively (rather
-   than an embedded PDF) so it stays fast and legible on a phone screen.
+   close screen's "See the full mission list" CTA (after the phone gate
+   above). Rendered natively (rather than an embedded PDF) so it stays fast
+   and legible on a phone screen.
    ========================================================================= */
 function renderMissionModal() {
   const gradesHtml = MISSION_MAP.map(
@@ -999,14 +1136,6 @@ function openMissionModal() {
    ========================================================================= */
 let kgState = { step: 0, deck: null, deckIndex: 0, answers: {}, challengeResolved: false };
 
-function shuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
 // One-card-at-a-time swipe deck: drag right = Real, drag left = Fake, or
 // tap a button (Fake / Not sure / Real) below — buttons are the only way to
 // answer "Not sure" since there's no natural swipe direction for it, and
@@ -1076,7 +1205,7 @@ function kgStepIntro() {
     <h1 class="title-hero">${KID_GAME.intro.title}</h1>
     <p class="subtitle">${KID_GAME.intro.sub}</p>
     <div class="grow"></div>
-    <button class="btn btn-amber" id="kg-start" style="width:100%;">${ICONS.play} ${KID_GAME.intro.cta}</button>`;
+    <button class="btn btn-amber" id="kg-start" style="width:100%;">${KID_GAME.intro.cta}</button>`;
 }
 function kgAttachIntro(body) {
   body.querySelector("#kg-start").addEventListener("click", () => {
@@ -1114,7 +1243,6 @@ function kgStepChallenge() {
     <p>${KID_GAME.challenge.instructions}</p>
     <div class="kg-progress" id="kg-progress">Picture 1 of ${kgState.deck.length}</div>
     <div class="kg-deck">${cards}</div>
-    <p class="kg-swipe-hint">Swipe the picture, or tap a button</p>
     <div class="kg-swipe-actions">
       <button class="kg-action-btn kg-action-fake" data-answer="fake">${ICONS.close}<span>Fake</span></button>
       <button class="kg-action-btn kg-action-confused" data-answer="confused">${ICONS.helpCircle}<span>Not sure</span></button>
@@ -1188,13 +1316,13 @@ function kgStepReveal() {
       const correctAnswer = img.isFake ? "fake" : "real";
       let tag, mark;
       if (answer === "confused") {
-        tag = img.isFake ? "AI · you weren't sure" : "Real · you weren't sure";
+        tag = img.isFake ? "AI · not sure" : "Real · not sure";
         mark = "muted";
       } else if (answer === correctAnswer) {
-        tag = img.isFake ? "AI · you caught it!" : "Real · you got it!";
+        tag = img.isFake ? "AI · caught it!" : "Real · got it!";
         mark = "good";
       } else {
-        tag = img.isFake ? "AI · you missed this one" : "Real · false alarm";
+        tag = img.isFake ? "AI · missed this one" : "Real · false alarm";
         mark = "bad";
       }
       return `
@@ -1211,12 +1339,11 @@ function kgStepReveal() {
   return `
     <div class="card glass-tile" style="text-align:center;">
       <div class="score-icon">${ICONS.target}</div>
-      <div class="score-big">You got ${score} of ${deck.length} right${confusedCount ? `, unsure on ${confusedCount}` : ""}.</div>
+      <div class="score-big">${score} of ${deck.length} right${confusedCount ? `, ${confusedCount} unsure` : ""}.</div>
       <div class="score-headline">${band.headline}</div>
       <p class="reveal-caption" style="margin-top:10px;">${KID_GAME.reassurance}</p>
     </div>
     ${rows}
-    <div class="aha-box">${KID_GAME.aha}</div>
     <button class="btn btn-amber" id="kg-reveal-next" style="width:100%;">Next →</button>`;
 }
 function kgAttachReveal(body) {
@@ -1323,24 +1450,22 @@ function openKidGame() {
    State machine
    ========================================================================= */
 const SCREEN_DEFS = [
-  { render: renderScreen0, attach: attachScreen0, bg: "hero" },
-  { render: renderScreenDetails, attach: attachScreenDetails, onEnter: onEnterScreenDetails, bg: "ambient" },
-  { render: renderScreen1, attach: attachScreen1, onEnter: onEnterScreen1, bg: "ambient" },
-  { render: renderScreen2, attach: attachScreen2, onEnter: onEnterScreen2, bg: "ambient" },
-  { render: renderScreen3, attach: attachScreen3, onEnter: onEnterScreen3, bg: "ambient" },
-  { render: renderScreen4, attach: attachScreen4, onEnter: onEnterScreen4, bg: "ambient" },
-  { render: renderScreen5, attach: attachScreen5, onEnter: onEnterScreen5, bg: "ambient" },
-  { render: renderScreen6, attach: attachScreen6, onEnter: onEnterScreen6, bg: "ambient" },
-  { render: renderScreen7, attach: attachScreen7, onEnter: onEnterScreen7, bg: "ambient" },
-  { render: renderScreen8, attach: attachScreen8, onEnter: onEnterScreen8, bg: "finale" },
+  { render: renderTitle, attach: attachTitle, bg: "hero" },
+  { render: renderDetails, attach: attachDetails, bg: "ambient" },
+  { render: renderWorry, attach: attachWorry, bg: "ambient", popup: true },
+  { render: renderChallenge1Intro, attach: attachChallenge1Intro, bg: "ambient" },
+  { render: renderChallenge1, attach: attachChallenge1, onEnter: onEnterChallenge1, bg: "ambient" },
+  { render: renderChallenge2, attach: attachChallenge2, onEnter: onEnterChallenge2, bg: "ambient" },
+  { render: renderScore, attach: attachScore, onEnter: onEnterScore, bg: "ambient" },
+  { render: renderReflection, attach: attachReflection, bg: "ambient" },
+  { render: renderClose, attach: attachClose, onEnter: onEnterClose, bg: "finale" },
 ];
 
 function buildAllScreens() {
-  round1Order = null;
   appEl.innerHTML = "";
   screenEls = SCREEN_DEFS.map((def, i) => {
     const div = document.createElement("div");
-    div.className = `screen screen-bg-${def.bg}`;
+    div.className = `screen screen-bg-${def.bg}` + (def.popup ? " screen-popup" : "");
     div.id = `screen-${i}`;
     div.innerHTML = def.render();
     appEl.appendChild(div);
@@ -1354,14 +1479,19 @@ function goTo(n) {
   state.current = n;
   screenEls.forEach((el, i) => el.classList.toggle("active", i === n));
   updatePips();
+  backBtn.classList.toggle("hidden", n === 0);
   const def = SCREEN_DEFS[n];
   if (def.onEnter) def.onEnter(screenEls[n]);
   window.scrollTo(0, 0);
+  // Screens are reused (never re-rendered), so their own internal scroll
+  // position (from .screen-content's overflow-y:auto) can be left stale
+  // from a previous visit — reset it whenever a screen becomes active.
+  const content = screenEls[n].querySelector(".screen-content");
+  if (content) content.scrollTop = 0;
 }
 
 function resetGame() {
   clearInterval(sessionInterval);
-  stopNarration();
   state = { responses: {}, roundScore: 0, current: 0 };
   sessionId = null;
   sessionEnded = false;
@@ -1372,20 +1502,14 @@ function resetGame() {
 }
 
 /* =========================================================================
-   Top bar wiring (logo, timer, voice toggle — all top-right)
+   Top bar wiring (back button, timer — top-left/top-right)
    ========================================================================= */
-function updateVoiceIcon() {
-  voiceBtn.innerHTML = voiceMuted ? ICONS.volumeOff : ICONS.volumeOn;
-}
 function initTopbar() {
   updateSessionDisplay();
-  updateVoiceIcon();
-  voiceBtn.addEventListener("click", () => {
+  backBtn.addEventListener("click", () => {
+    if (state.current <= 0) return;
     sfx.click();
-    voiceMuted = !voiceMuted;
-    updateVoiceIcon();
-    voiceBtn.classList.toggle("muted", voiceMuted);
-    if (voiceMuted) stopNarration();
+    goTo(state.current - 1);
   });
 }
 
@@ -1407,6 +1531,5 @@ function boot() {
   initTopbar();
   buildAllScreens();
   goTo(0);
-  if ("speechSynthesis" in window) speechSynthesis.getVoices();
 }
 document.addEventListener("DOMContentLoaded", boot);

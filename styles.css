@@ -44,7 +44,7 @@ body {
 }
 
 h1, h2, h3 {
-  font-family: "Sora", sans-serif;
+  font-family: "Fraunces", Georgia, serif;
   letter-spacing: -0.01em;
   margin: 0 0 0.4em;
 }
@@ -135,27 +135,23 @@ button {
   gap: 8px;
 }
 
-#voice-btn {
+#back-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
   border: 1px solid var(--line);
   background: rgba(14, 16, 48, 0.55);
   backdrop-filter: blur(6px);
+  color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 16px;
   transition: transform 120ms ease, background 120ms ease;
 }
 
-#voice-btn:active {
+#back-btn:active {
   transform: scale(0.9);
-}
-
-#voice-btn.muted {
-  opacity: 0.55;
 }
 
 #session-timer {
@@ -233,6 +229,25 @@ button {
   justify-content: center;
   text-align: center;
   align-items: center;
+}
+
+/* ---------- Pop-up question (e.g. the "honest question" screen) ----------
+   A dim scrim behind a floating card, instead of the question filling the
+   whole screen like a normal step — makes it read as an interruption. */
+.popup-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 6, 15, 0.6);
+  z-index: 0;
+}
+
+.screen-popup > .screen-content {
+  position: relative;
+  z-index: 1;
+}
+
+.screen-popup .card {
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
 }
 
 /* ---------- Hero logo (title screen) ---------- */
@@ -370,6 +385,11 @@ button {
   transform: scale(0.98);
 }
 
+.option-btn.selected {
+  background: rgba(139, 124, 255, 0.16);
+  border-color: var(--brand-2);
+}
+
 .option-btn.correct {
   background: rgba(52, 211, 153, 0.18);
   border-color: var(--good);
@@ -386,7 +406,7 @@ button {
 
 /* ---------- Round banner + timer ring ---------- */
 .round-banner {
-  font-family: "Sora", sans-serif;
+  font-family: "Fraunces", Georgia, serif;
   font-weight: 700;
   font-size: 15px;
   color: var(--brand-2);
@@ -471,64 +491,7 @@ button {
   color: var(--bad);
 }
 
-/* ---------- Round 1 portrait cards ---------- */
-.portrait-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.portrait-card {
-  position: relative;
-  flex: 1 1 130px;
-  max-width: 160px;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 3px solid var(--line);
-  cursor: pointer;
-  background: var(--surface);
-  transition: border-color 200ms ease, transform 150ms ease, box-shadow 200ms ease;
-}
-
-.portrait-card img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 3/4;
-  object-fit: cover;
-}
-
-.portrait-card:active {
-  transform: scale(0.97);
-}
-
-.portrait-card.correct {
-  border-color: var(--good);
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.35), 0 0 24px rgba(52, 211, 153, 0.45);
-}
-
-.portrait-card.wrong {
-  border-color: var(--bad);
-  box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.3);
-}
-
-.portrait-caption {
-  font-size: 12px;
-  color: var(--muted);
-  padding: 8px;
-  text-align: center;
-}
-
-.portrait-fallback {
-  aspect-ratio: 3/4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40px;
-  background: var(--surface-2);
-}
-
-/* ---------- Round 2 shopping card ---------- */
+/* ---------- Challenge 2 shopping card ---------- */
 .shop-card {
   position: relative;
   border-radius: 16px;
@@ -542,15 +505,6 @@ button {
   aspect-ratio: 4/3;
   object-fit: cover;
   display: block;
-}
-
-.shop-fallback {
-  aspect-ratio: 4/3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48px;
-  background: var(--surface-2);
 }
 
 .shop-badge {
@@ -613,75 +567,9 @@ button {
   50% { transform: scale(1.06); }
 }
 
-/* ---------- Round 3 chat / tutor ---------- */
-.tutor-avatar-wrap {
-  display: flex;
-  justify-content: center;
-  margin-top: -8px;
-}
-
-.tutor-avatar-wrap img {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 18px rgba(108, 92, 231, 0.5));
-  animation: float-avatar 3.2s ease-in-out infinite;
-}
-
-.tutor-fallback {
-  font-size: 64px;
-  animation: float-avatar 3.2s ease-in-out infinite;
-}
-
 @keyframes float-avatar {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
-}
-
-.chat-bubble-user {
-  align-self: flex-end;
-  background: var(--brand);
-  color: #fff;
-  border-radius: 16px 16px 4px 16px;
-  padding: 10px 14px;
-  max-width: 85%;
-  font-size: 14px;
-  margin-bottom: 8px;
-}
-
-.chat-bubble-ai {
-  align-self: flex-start;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 16px 16px 16px 4px;
-  padding: 10px 14px;
-  max-width: 85%;
-  font-size: 14px;
-}
-
-.chat-reply-box {
-  display: flex;
-  flex-direction: column;
-  min-height: 64px;
-  justify-content: flex-end;
-}
-
-.typing-dots span {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 3px;
-  border-radius: 50%;
-  background: var(--muted);
-  animation: bounce-dot 1s infinite;
-}
-
-.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
-.typing-dots span:nth-child(3) { animation-delay: 0.3s; }
-
-@keyframes bounce-dot {
-  0%, 60%, 100% { transform: translateY(0); opacity: .5;}
-  30% { transform: translateY(-4px); opacity: 1; }
 }
 
 /* ---------- Reveal / aha ---------- */
@@ -701,7 +589,7 @@ button {
 
 /* ---------- Score screen ---------- */
 .score-big {
-  font-family: "Sora", sans-serif;
+  font-family: "Fraunces", Georgia, serif;
   font-weight: 700;
   font-size: 34px;
   white-space: nowrap;
@@ -790,7 +678,7 @@ button {
 /* ---------- Finale ---------- */
 .finale-headline {
   font-size: 26px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -809,39 +697,6 @@ button {
     transform: translateY(900px) rotate(540deg);
     opacity: 0;
   }
-}
-
-/* ---------- Steps card (Round 4 · Bug Hunt) ---------- */
-.steps-card {
-  border-radius: 16px;
-  padding: 6px 16px;
-}
-
-.step-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  font-size: 15px;
-  border-bottom: 1px solid var(--line);
-}
-
-.step-row:last-child {
-  border-bottom: none;
-}
-
-.step-num {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(139, 124, 255, 0.2);
-  color: var(--brand-2);
-  font-weight: 700;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ---------- Glass tiles — premium glassmorphism + hover/tap bulge ----------
@@ -1089,7 +944,7 @@ button {
 }
 
 .mm-title {
-  font-family: "Sora", sans-serif;
+  font-family: "Fraunces", Georgia, serif;
   font-weight: 700;
   font-size: 17px;
 }
@@ -1132,7 +987,7 @@ button {
   background: none;
   border: none;
   color: var(--ink);
-  font-family: "Sora", sans-serif;
+  font-family: "Fraunces", Georgia, serif;
   font-weight: 700;
   font-size: 15px;
   padding: 14px 4px;
@@ -1327,8 +1182,8 @@ button {
   padding: 6px 14px;
   border-radius: 8px;
   border: 3px solid;
-  font-family: "Sora", sans-serif;
-  font-weight: 800;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 700;
   font-size: 16px;
   letter-spacing: 0.05em;
   opacity: 0;
@@ -1399,6 +1254,46 @@ button {
 
 .kg-action-confused {
   color: var(--warn);
+}
+
+.kg-action-btn.selected {
+  border-color: currentColor;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.kg-action-btn.correct {
+  border-color: var(--good);
+  background: rgba(52, 211, 153, 0.18);
+}
+
+.kg-action-btn.wrong {
+  border-color: var(--bad);
+  background: rgba(251, 113, 133, 0.14);
+}
+
+.kg-action-btn:disabled,
+.kg-action-btn[disabled] {
+  cursor: default;
+}
+
+/* ---------- Challenge 1 · one image at a time ---------- */
+.ch1-image-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 3/4;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 3px solid var(--line);
+  background: var(--surface);
+}
+
+.ch1-image-wrap img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .kg-reveal-row {

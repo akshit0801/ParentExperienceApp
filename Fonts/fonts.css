@@ -1,4 +1,4 @@
-/* Self-hosted webfonts — Poppins/Sora (headings), Inter (body). Latin subset only. */
+/* Self-hosted webfonts — Fraunces (headings), Inter (body). Latin subset only. */
 
 @font-face {
   font-family: 'Inter';
@@ -51,17 +51,26 @@
   src: url('Poppins-800.woff2') format('woff2');
 }
 
+/* Fraunces is a variable font — one file covers weights 500-700 (and the
+   optical-size axis auto-adjusts flourish for display vs text sizes). */
 @font-face {
-  font-family: 'Sora';
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('Fraunces-var.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Fraunces';
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('Sora-600.woff2') format('woff2');
+  src: url('Fraunces-var.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Sora';
+  font-family: 'Fraunces';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('Sora-700.woff2') format('woff2');
+  src: url('Fraunces-var.woff2') format('woff2');
 }
