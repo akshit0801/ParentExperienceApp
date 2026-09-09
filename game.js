@@ -7,15 +7,12 @@
 // to Supabase — see the "Usage analytics" block below and supabase/schema.sql for the table + RLS.
 
 const WEBHOOK_URL = ""; // optional POST target for the reflection screen — left empty, fails silently.
-const SESSION_SECONDS = 180; // 3-minute overall timer shown top-right.
 
 let state = { responses: {}, roundScore: 0, current: 0 };
 
 const appEl = document.getElementById("app");
 const pipsEl = document.getElementById("pips");
 const backBtn = document.getElementById("back-btn");
-const sessionTimerEl = document.getElementById("session-timer");
-const sessionTimerText = sessionTimerEl.querySelector("span");
 
 /* =========================================================================
    Icon library — hand-built line icons (no emoji), all single-colour via
@@ -48,8 +45,6 @@ const ICONS = {
 
 let screenEls = [];
 let activeRoundTimer = null;
-let sessionInterval = null;
-let sessionRemaining = SESSION_SECONDS;
 
 /* =========================================================================
    Usage analytics — anonymous, append-only events posted straight to
@@ -236,33 +231,77 @@ function monoBadge(isGood) {
 }
 
 /* =========================================================================
-   Session timer — 3:00 countdown, top-right. Never blocks; on expiry it
-   gently locks any unanswered challenges and jumps to the reveal.
+   Mission card — the "your child learns this" payoff. Deliberately used
+   twice: inline the moment a challenge ends (so the good news lands right
+   after the sting, not 4 screens later), then again as a lighter recap on
+   the score screen. Collapsed it names the mission; tapping it opens what
+   the child actually does in that mission.
    ========================================================================= */
-function updateSessionDisplay() {
-  const clamped = Math.max(sessionRemaining, 0);
-  const m = Math.floor(clamped / 60);
-  const s = clamped % 60;
-  sessionTimerText.textContent = `${m}:${String(s).padStart(2, "0")}`;
-  sessionTimerEl.classList.toggle("low", clamped <= 30);
+function missionCardHTML(missionLink, opts) {
+  const o = opts || {};
+  return `
+    <div class="mission-card${o.compact ? " mission-card--compact" : ""}" data-mission="${missionLink.name}">
+      <button class="mission-head" type="button" aria-expanded="false">
+        <span class="skill-icon">${ICONS[missionLink.iconKey]}</span>
+        <span class="mission-text">
+          <span class="mission-eyebrow">${o.eyebrow || missionLink.subject}</span>
+          <span class="skill-title">${o.heading || missionLink.name}</span>
+          <span class="skill-line">${missionLink.line}</span>
+          <span class="mission-hint">${MISSION_REVEAL.hint}</span>
+        </span>
+        <span class="mission-chevron">${ICONS.chevronDown}</span>
+      </button>
+      <div class="mission-body">
+        <div class="mission-detail">
+          <div class="mission-detail-inner">
+            <div class="mission-detail-label">${MISSION_REVEAL.detailLabel}</div>
+            <p class="mission-detail-text">${missionLink.detail || missionLink.line}</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
 }
-function startSessionTimer() {
-  clearInterval(sessionInterval);
-  sessionRemaining = SESSION_SECONDS;
-  updateSessionDisplay();
-  sessionInterval = setInterval(() => {
-    sessionRemaining--;
-    updateSessionDisplay();
-    if (sessionRemaining <= 0) {
-      clearInterval(sessionInterval);
-      handleSessionTimeout();
-    }
-  }, 1000);
+
+// Nudges an element's own scroll container just far enough to show all of
+// it. Used after a card expands so the detail never opens below the fold.
+function keepInView(el) {
+  const scroller = el.closest(".screen-content, .mm-body, .kg-body");
+  if (!scroller) return;
+  const over = el.getBoundingClientRect().bottom - scroller.getBoundingClientRect().bottom;
+  if (over > 0) scroller.scrollBy({ top: over + 16, behavior: "smooth" });
 }
-function handleSessionTimeout() {
-  if (!state.responses.r1 && challenge1Api) challenge1Api.forceFinish(true);
-  if (!state.responses.r2) recordRoundAnswer(2, null, false, CHALLENGE2.timerSeconds * 1000);
-  if (state.current < 6) goTo(6);
+
+// Wires every not-yet-wired mission card under `root` for tap-to-expand.
+function wireMissionCards(root) {
+  root.querySelectorAll(".mission-card").forEach((card) => {
+    const head = card.querySelector(".mission-head");
+    if (head._wired) return;
+    head._wired = true;
+    head.addEventListener("click", () => {
+      sfx.click();
+      const open = !card.classList.contains("expanded");
+      card.classList.toggle("expanded", open);
+      head.setAttribute("aria-expanded", String(open));
+      if (open) {
+        setTimeout(() => keepInView(card), 280); // after the 0fr→1fr panel opens
+        trackEvent("mission_card_expanded", SCREEN_NAMES[state.current] || null, { mission: card.dataset.mission });
+      }
+    });
+  });
+}
+
+// Drops the reveal card into a challenge screen's slot and fades it in.
+function revealMissionInline(slotEl, missionLink) {
+  slotEl.innerHTML = missionCardHTML(missionLink, { eyebrow: MISSION_REVEAL.eyebrow, heading: missionLink.name });
+  wireMissionCards(slotEl);
+  // Two frames: the first lays the slot out in its faded-out state, the
+  // second starts the transition (one frame would skip the fade).
+  requestAnimationFrame(() => requestAnimationFrame(() => slotEl.classList.add("visible")));
+  // The card and the "next" button are the last things on the screen, so
+  // scrolling to the end brings the whole reveal into view at once.
+  const scroller = slotEl.closest(".screen-content");
+  if (scroller) setTimeout(() => scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" }), 220);
+  trackEvent("mission_reveal_shown", SCREEN_NAMES[state.current] || null, { mission: missionLink.name });
 }
 
 /* =========================================================================
@@ -328,6 +367,11 @@ function recordChallenge1Result(score, answers, timedOut) {
    ========================================================================= */
 function updatePips() {
   const roundForScreen = { 4: 0, 5: 1 };
+  // The pips track progress through the two challenges, so they'd be
+  // meaningless anywhere else — on the title screen no round has started,
+  // and the pip pair would sit alone in the corner (the back button is
+  // hidden there, so space-between pushes them hard left).
+  pipsEl.classList.toggle("hidden", !(state.current in roundForScreen));
   const pips = pipsEl.querySelectorAll(".pip");
   pips.forEach((pip, i) => {
     const answered = !!state.responses["r" + (i + 1)];
@@ -340,7 +384,7 @@ function updatePips() {
    Confetti burst (finale screen)
    ========================================================================= */
 function burstConfetti(container) {
-  const colors = ["#D9A954", "#F1D9A4", "#FFFFFF", "#B9A4FF"];
+  const colors = ["#FFC24B", "#F1D9A4", "#FFFFFF", "#3EC6E0"];
   for (let i = 0; i < 26; i++) {
     const piece = document.createElement("div");
     piece.className = "confetti-piece";
@@ -375,6 +419,7 @@ function renderTitle() {
       <h1 class="title-hero">${TITLE.title}</h1>
       <p class="subtitle">${TITLE.subtitle}</p>
       <div class="grow"></div>
+      <p class="title-cue">${TITLE.cue}</p>
       <button class="btn btn-amber" id="s0-cta" style="width:100%;">${TITLE.cta}</button>
     </div>`;
 }
@@ -442,12 +487,16 @@ function attachDetails(el) {
     };
     trackEvent("question_answered", "details", state.responses.details);
     sessionId = sessionId || makeSessionId();
-    startSessionTimer();
     goTo(2);
   });
 }
 
 // ----- Screen 2 · The honest question — shown as a pop-up (capture #2) ----
+// Two states on one screen. First the question card (eyebrow + prompt +
+// options + confirm); once they confirm, that card gives way to a single
+// acknowledgement card which carries the forward action itself. The
+// reassurance never sits in the options area, so it cannot read as a
+// fifth, disabled choice.
 function renderWorry() {
   const opts = WORRY_Q.options
     .map((o) => `<button class="option-btn" data-id="${o.id}">${o.label}</button>`)
@@ -455,57 +504,72 @@ function renderWorry() {
   return `
     <div class="popup-scrim"></div>
     <div class="screen-content center">
-      <div class="card glass-tile">
+      <div class="card glass-tile" id="wq-question">
         <div class="eyebrow">${WORRY_Q.eyebrow}</div>
         <p>${WORRY_Q.prompt}</p>
         <div class="option-list" id="wq-options">${opts}</div>
-        <p class="aha-box hidden" id="wq-ack">${WORRY_Q.ack}</p>
-        <button class="btn btn-amber" id="wq-continue" disabled style="width:100%;">${WORRY_Q.cta}</button>
+        <button class="btn btn-amber" id="wq-continue" disabled style="width:100%;margin-top:14px;">${WORRY_Q.cta}</button>
+      </div>
+      <div class="card glass-tile ack-card hidden" id="wq-ack">
+        <p class="ack-card-text">${WORRY_Q.ack}</p>
+        <button class="btn btn-amber" id="wq-ack-cta" style="width:100%;">${WORRY_Q.ackCta}</button>
       </div>
     </div>`;
 }
 function attachWorry(el) {
   const buttons = Array.from(el.querySelectorAll("#wq-options .option-btn"));
   const continueBtn = el.querySelector("#wq-continue");
-  const ackEl = el.querySelector("#wq-ack");
+  const questionCard = el.querySelector("#wq-question");
+  const ackCard = el.querySelector("#wq-ack");
+  const ackCtaBtn = el.querySelector("#wq-ack-cta");
+  const contentEl = el.querySelector(".screen-content");
   let selected = state.responses.worry || null;
-  let confirmed = !!state.responses.worry;
 
   function paintSelection() {
     buttons.forEach((b) => b.classList.toggle("selected", b.dataset.id === selected));
     continueBtn.disabled = !selected;
   }
-  function lockIn() {
-    confirmed = true;
-    buttons.forEach((b) => {
-      b.disabled = true;
-      b.classList.toggle("correct", b.dataset.id === selected);
-    });
-    ackEl.classList.remove("hidden");
-    continueBtn.textContent = "Continue";
+  // Retires the question card and brings the acknowledgement card in its
+  // place. `animate` is false only when restoring the already-settled state
+  // after a back-navigation, where there's no beat to play.
+  function showAck(animate) {
+    if (!ackCard.classList.contains("hidden")) return;
+    const swap = () => {
+      questionCard.classList.add("hidden");
+      ackCard.classList.remove("hidden");
+      // With the tall options gone, even out the screen's top-bar clearance
+      // padding so the short card sits at the optical centre, not low.
+      contentEl.classList.add("ack-centered");
+      // Two frames: the first lays the card out faded, the second animates.
+      if (animate) requestAnimationFrame(() => requestAnimationFrame(() => ackCard.classList.add("visible")));
+      else ackCard.classList.add("visible");
+    };
+    if (!animate) return swap();
+    questionCard.classList.add("leaving");
+    setTimeout(swap, 200); // let the question card recede first
   }
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (confirmed) return;
       sfx.click();
       selected = btn.dataset.id;
       paintSelection();
     });
   });
+  // Confirming the answer is what captures it — and the only thing that
+  // brings the acknowledgement up.
   continueBtn.addEventListener("click", () => {
     if (!selected) return;
-    if (!confirmed) {
-      sfx.click();
-      state.responses.worry = selected;
-      trackEvent("question_answered", "worry", { choice: selected });
-      lockIn();
-      setTimeout(() => goTo(3), 900);
-      return;
-    }
+    sfx.click();
+    state.responses.worry = selected;
+    trackEvent("question_answered", "worry", { choice: selected });
+    showAck(true);
+  });
+  // The acknowledgement card itself is the gate into the first challenge.
+  ackCtaBtn.addEventListener("click", () => {
     sfx.whoosh();
     goTo(3);
   });
-  if (confirmed) lockIn();
+  if (selected) showAck(false); // returning via the back button
   paintSelection();
 }
 
@@ -553,8 +617,9 @@ function renderChallenge1() {
         <button class="kg-action-btn kg-action-real" data-id="real">${ICONS.check}<span>Real</span></button>
       </div>
       <p class="reveal-caption hidden" id="c1-explain"></p>
+      <div class="mission-slot" id="c1-mission"></div>
       <button class="btn btn-amber" id="c1-confirm" disabled style="width:100%;">Confirm answer</button>
-      <button class="btn btn-amber hidden" id="c1-next" style="width:100%;">Next round →</button>
+      <button class="btn btn-amber hidden" id="c1-next" style="width:100%;">${CHALLENGE1.nextCta}</button>
     </div>`;
 }
 function attachChallenge1(el) {
@@ -564,6 +629,7 @@ function attachChallenge1(el) {
   const explainEl = el.querySelector("#c1-explain");
   const confirmBtn = el.querySelector("#c1-confirm");
   const nextBtn = el.querySelector("#c1-next");
+  const missionSlot = el.querySelector("#c1-mission");
   const actionBtns = Array.from(el.querySelectorAll(".kg-action-btn"));
 
   let deck = null;
@@ -578,6 +644,19 @@ function attachChallenge1(el) {
     confirmBtn.classList.add("hidden");
     nextBtn.classList.remove("hidden");
     actionBtns.forEach((b) => (b.disabled = true));
+  }
+
+  // Single exit for the whole challenge — whether the parent answered the
+  // last image or the ring ran out, the mission reveal always lands here.
+  function finish(timedOut) {
+    if (resolved) return;
+    resolved = true;
+    stopRingTimer();
+    clearTimeout(advanceTimeoutId);
+    advanceTimeoutId = null;
+    recordChallenge1Result(score, answers, timedOut);
+    lockBoard();
+    revealMissionInline(missionSlot, CHALLENGE1.missionLink);
   }
 
   imgEl.addEventListener("error", () => {
@@ -625,10 +704,7 @@ function attachChallenge1(el) {
         showImage(index);
       }, 1100);
     } else {
-      stopRingTimer();
-      resolved = true;
-      recordChallenge1Result(score, answers, false);
-      nextBtn.classList.remove("hidden");
+      finish(false);
     }
   }
 
@@ -659,6 +735,8 @@ function attachChallenge1(el) {
     answers = {};
     score = 0;
     resolved = false;
+    missionSlot.classList.remove("visible");
+    missionSlot.innerHTML = "";
     showImage(0);
     startRingTimer(el.closest(".screen"), CHALLENGE1.timerSeconds, () => {
       if (resolved) return;
@@ -671,26 +749,11 @@ function attachChallenge1(el) {
         index++;
       }
       score = deck.filter((img) => answers[img.id] === (img.isFake ? "ai" : "real")).length;
-      resolved = true;
-      clearTimeout(advanceTimeoutId);
-      advanceTimeoutId = null;
-      recordChallenge1Result(score, answers, true);
-      lockBoard();
+      finish(true);
     });
   }
 
-  challenge1Api = {
-    start,
-    forceFinish(timedOut) {
-      if (resolved || !deck) return;
-      stopRingTimer();
-      clearTimeout(advanceTimeoutId);
-      advanceTimeoutId = null;
-      resolved = true;
-      recordChallenge1Result(score, answers, timedOut);
-      lockBoard();
-    },
-  };
+  challenge1Api = { start };
 }
 function onEnterChallenge1() {
   if (state.responses.r1) return; // already completed — DOM already shows the reveal state
@@ -732,14 +795,16 @@ function renderChallenge2() {
       <p>${CHALLENGE2.prompt}</p>
       <div class="option-list" id="c2-options">${opts}</div>
       <p class="reveal-caption hidden" id="c2-reveal">${CHALLENGE2.reveal}</p>
+      <div class="mission-slot" id="c2-mission"></div>
       <button class="btn btn-amber" id="c2-confirm" disabled style="width:100%;">${CHALLENGE2.cta}</button>
-      <button class="btn btn-amber hidden" id="c2-next" style="width:100%;">See your result →</button>
+      <button class="btn btn-amber hidden" id="c2-next" style="width:100%;">${CHALLENGE2.nextCta}</button>
     </div>`;
 }
 function attachChallenge2(el) {
   const buttons = Array.from(el.querySelectorAll("#c2-options .option-btn"));
   const confirmBtn = el.querySelector("#c2-confirm");
   const nextBtn = el.querySelector("#c2-next");
+  const missionSlot = el.querySelector("#c2-mission");
   let selected = state.responses.r2 ? state.responses.r2.choice : null;
   let confirmed = !!state.responses.r2;
 
@@ -769,6 +834,7 @@ function attachChallenge2(el) {
       correct ? sfx.correct() : sfx.wrong();
       recordRoundAnswer(2, selected, correct, ms);
     }
+    revealMissionInline(missionSlot, CHALLENGE2.missionLink);
   }
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -802,6 +868,7 @@ function attachChallenge2(el) {
     el.querySelector("#c2-reveal").classList.remove("hidden");
     confirmBtn.classList.add("hidden");
     nextBtn.classList.remove("hidden");
+    revealMissionInline(missionSlot, CHALLENGE2.missionLink);
   }
   paintSelection();
 
@@ -832,38 +899,37 @@ function onEnterChallenge2(el) {
   });
 }
 
-// ----- Screen 6 · The reveal — score + skill map ----------------------------
+// ----- Screen 6 · Recap — the count they caught + the two missions ----------
+// Both missions were already revealed inline right after their challenge, so
+// this screen is a lighter recap plus the "see all missions" step — not the
+// first place the parent hears the good news.
 function renderScore() {
-  const rounds = [CHALLENGE1, CHALLENGE2];
-  const rows = rounds
-    .map(
-      (r) => `
-      <div class="skill-row glass-tile" data-round="${r.missionLink.title}">
-        <div class="skill-icon">${ICONS[r.missionLink.iconKey]}</div>
-        <div>
-          <div class="skill-title">${r.missionLink.title}</div>
-          <div class="skill-subject">${r.missionLink.subject}</div>
-          <div class="skill-line">${r.missionLink.line}</div>
-        </div>
-      </div>`
-    )
+  const rows = [CHALLENGE1, CHALLENGE2]
+    .map((r) => missionCardHTML(r.missionLink, { eyebrow: r.missionLink.subject, heading: r.missionLink.title, compact: true }))
     .join("");
   return `
     <div class="screen-content">
       <div class="grow" style="flex:0;"></div>
       <div class="card glass-tile" style="text-align:center;">
         <div class="score-icon">${ICONS.target}</div>
-        <div class="score-big" id="s6-score">You scored 0 / ${SCORE_MAX}.</div>
+        <div class="score-big" id="s6-score"></div>
         <div class="score-headline" id="s6-headline"></div>
         <p class="reveal-caption" style="margin-top:10px;">${SCORE_REASSURANCE}</p>
       </div>
+      <div class="recap-label">${SCORE_RECAP_LABEL}</div>
       ${rows}
       <p class="footer-note">${SKILL_MAP_FOOTER}</p>
+      <button class="btn btn-ghost" id="s6-missions" style="width:100%;">${SCORE_MISSIONS_CTA}</button>
       <button class="btn btn-amber" id="s6-continue" style="width:100%;">Continue →</button>
     </div>`;
 }
 function attachScore(el) {
-  el.querySelectorAll(".skill-row").forEach((row) => row.addEventListener("click", () => sfx.click()));
+  wireMissionCards(el);
+  el.querySelector("#s6-missions").addEventListener("click", () => {
+    sfx.click();
+    if (state.responses.phone) openMissionModal();
+    else openPhoneGate(() => openMissionModal());
+  });
   el.querySelector("#s6-continue").addEventListener("click", () => {
     sfx.whoosh();
     goTo(7);
@@ -872,7 +938,7 @@ function attachScore(el) {
 function onEnterScore(el) {
   const score = state.roundScore;
   const band = SCORE_BANDS.find((b) => score >= b.min && score <= b.max) || SCORE_BANDS[0];
-  el.querySelector("#s6-score").textContent = `You scored ${score} / ${SCORE_MAX}.`;
+  el.querySelector("#s6-score").textContent = SCORE_LINE.replace("{n}", score);
   el.querySelector("#s6-headline").textContent = band.headline;
 }
 
@@ -1131,8 +1197,8 @@ function openMissionModal() {
    Kids mini-game · "Can You Spot the Fake AI?" — opened from the close
    screen's "Your child's turn" button. Self-contained mini state machine
    (its own KG_STEPS array + kgGoTo) so it doesn't disturb the parent flow's
-   screen/pip/session-timer bookkeeping. Reuses existing components (glass
-   tiles, timer ring, sfx, confetti, ICONS) rather than inventing new ones.
+   screen/pip bookkeeping. Reuses existing components (glass tiles, timer
+   ring, sfx, confetti, ICONS) rather than inventing new ones.
    ========================================================================= */
 let kgState = { step: 0, deck: null, deckIndex: 0, answers: {}, challengeResolved: false };
 
@@ -1491,21 +1557,18 @@ function goTo(n) {
 }
 
 function resetGame() {
-  clearInterval(sessionInterval);
   state = { responses: {}, roundScore: 0, current: 0 };
   sessionId = null;
   sessionEnded = false;
-  sessionRemaining = SESSION_SECONDS;
-  updateSessionDisplay();
   buildAllScreens();
   goTo(0);
 }
 
 /* =========================================================================
-   Top bar wiring (back button, timer — top-left/top-right)
+   Top bar wiring — back button only. There is deliberately no persistent
+   session countdown: the two per-challenge ring timers are the only clocks.
    ========================================================================= */
 function initTopbar() {
-  updateSessionDisplay();
   backBtn.addEventListener("click", () => {
     if (state.current <= 0) return;
     sfx.click();

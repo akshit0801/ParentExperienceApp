@@ -1,22 +1,61 @@
 @import url("Fonts/fonts.css");
 
 :root {
-  --bg: #0b0c16;
-  --bg-2: #14151f;
-  --surface: #1a1b28;
-  --surface-2: #23243a;
-  --ink: #f0f1f7;
-  --muted: #9a9db8;
-  --brand: #6c5ce7;
-  --brand-2: #8b7cff;
-  --accent: #d9a954;
-  --accent-2: #c1913f;
+  /* Atmosphere — navy behind and around the light content cards. */
+  --bg: #2b3160;
+  --bg-2: #232848;
+
+  /* The same two navies as channel lists. Every screen is fully covered by a
+     background image, so the only way --bg reaches a content screen is
+     through the translucent scrim over that image — and rgba() can't take a
+     hex custom property. Building the scrim from these keeps the two navies
+     above in charge of how light the content screens read. Keep in sync. */
+  --bg-rgb: 43, 49, 96;
+  --bg-2-rgb: 35, 40, 72;
+
+  /* Content surfaces are LIGHT: cards, option tiles, sheets. */
+  --surface: #f4f6fc;
+  --surface-2: #e8edfb;
+
+  /* Text ON LIGHT surfaces. */
+  --ink: #242a52;
+  --muted: #6b7280;
+
+  --brand: #1a1f3d;
+  --brand-2: #3ec6e0;
+  --accent: #ffc24b;
+  --accent-2: #e0a32f; /* gradient foot for gold buttons */
   --warn: #e0a845;
-  --good: #2fbf8f;
-  --bad: #e5646f;
-  --line: rgba(255, 255, 255, 0.09);
+  --good: #34d399;
+  --bad: #fb7185;
+  --line: #e3e7f5;
+
+  /* --- Added: contextual tokens this palette needs to stay readable ------
+     --ink/--muted now mean "on light", so the dark image-backed screens
+     (title, challenge intro, finale) and the gutters between cards need
+     their own pair, or every headline there turns dark-on-dark. */
+  --on-dark: #f4f6fc;
+  /* 0.86, not 0.74: at 0.74 the title-screen subtitle fell to 4.28:1 over
+     the brightest part of the hero artwork. Raising the alpha fixes that
+     from the text side, leaving the image and its scrim untouched, and
+     lifts every other secondary string on the dark screens with it. */
+  --on-dark-muted: rgba(244, 246, 252, 0.86);
+
+  /* Gold and teal are picked for punch on navy; at text sizes on a light
+     card they land near 1.7:1, so each gets an ink-weight variant. Use the
+     plain token for fills and strokes, the -ink variant for type. */
+  --accent-ink: #8a5e0a;
+  --teal-ink: #0f6e85;
+  --good-ink: #0f7a5a;
+  --bad-ink: #c2374a;
+
+  /* Answer-state tints for light cards. */
+  --good-tint: #e4f7ef;
+  --bad-tint: #fde8eb;
+  --teal-tint: #e2f5fb;
+
   --radius: 20px;
-  --shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  --shadow: 0 10px 30px rgba(11, 14, 33, 0.28);
   --fade: 240ms;
 }
 
@@ -30,10 +69,13 @@ body {
   height: 100%;
 }
 
+/* The area outside the phone column is navy at every width, not black, so
+   the letterboxing reads as part of the design. */
 body {
   margin: 0;
-  background: #05060f;
-  color: var(--ink);
+  background: radial-gradient(120% 90% at 50% 0%, #39406f 0%, var(--bg) 42%, var(--bg-2) 100%);
+  background-color: var(--bg);
+  color: var(--on-dark);
   font-family: "Inter", system-ui, sans-serif;
   font-size: 18px;
   line-height: 1.45;
@@ -71,13 +113,13 @@ button {
   background: var(--bg);
   border-radius: 36px;
   overflow: hidden;
-  box-shadow: var(--shadow), 0 0 0 10px #000;
+  /* Bezel in deep navy rather than pure black, with a light hairline so the
+     frame separates from the navy page instead of punching a hole in it. */
+  box-shadow: 0 30px 70px rgba(8, 10, 24, 0.55), 0 0 0 10px #10142b,
+    0 0 0 11px rgba(255, 255, 255, 0.07);
 }
 
 @media (min-width: 820px) {
-  body {
-    background: radial-gradient(circle at 50% 20%, #171a44 0%, #05060f 70%);
-  }
   #phone {
     margin: 24px;
   }
@@ -121,8 +163,9 @@ button {
   transition: background var(--fade);
 }
 
+/* Teal marks a finished challenge, gold marks the current one. */
 .pip.done {
-  background: var(--good);
+  background: var(--brand-2);
 }
 
 .pip.active {
@@ -135,14 +178,16 @@ button {
   gap: 8px;
 }
 
+/* Floats over the dark image backgrounds — stays a dark pill with light
+   glyph, so it must not pick up the now-dark --ink. */
 #back-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  background: rgba(14, 16, 48, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(16, 20, 43, 0.62);
   backdrop-filter: blur(6px);
-  color: var(--ink);
+  color: var(--on-dark);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -152,25 +197,6 @@ button {
 
 #back-btn:active {
   transform: scale(0.9);
-}
-
-#session-timer {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: rgba(14, 16, 48, 0.55);
-  border: 1px solid var(--line);
-  backdrop-filter: blur(6px);
-  padding: 6px 10px;
-  border-radius: 20px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-#session-timer.low {
-  color: var(--bad);
-  border-color: var(--bad);
 }
 
 /* ---------- Screens ---------- */
@@ -197,16 +223,24 @@ button {
   pointer-events: auto;
 }
 
+/* Title and finale keep their original near-black scrims: these two screens
+   are the cinematic bookends and set type straight onto the artwork, so the
+   image has to stay dark and dominant. Do not lighten these two. */
 .screen-bg-hero {
   background-image: linear-gradient(180deg, rgba(10, 11, 35, 0.35), rgba(10, 11, 35, 0.85)), var(--hero-url);
 }
 
-.screen-bg-ambient {
-  background-image: linear-gradient(180deg, rgba(10, 11, 35, 0.55), rgba(10, 11, 35, 0.88)), var(--ambient-url);
-}
-
 .screen-bg-finale {
   background-image: linear-gradient(180deg, rgba(20, 14, 4, 0.35), rgba(10, 11, 35, 0.82)), var(--finale-url);
+}
+
+/* Every other screen is a content screen: the artwork is only atmosphere
+   behind light cards, so the scrim is the palette navy at high opacity.
+   That is what makes these screens read as --bg rather than near-black —
+   the image still covers the box, so a low-opacity scrim would show more
+   artwork, not more navy. */
+.screen-bg-ambient {
+  background-image: linear-gradient(180deg, rgba(var(--bg-rgb), 0.82), rgba(var(--bg-2-rgb), 0.9)), var(--ambient-url);
 }
 
 .screen-content {
@@ -237,7 +271,7 @@ button {
 .popup-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(5, 6, 15, 0.6);
+  background: rgba(11, 14, 33, 0.62);
   z-index: 0;
 }
 
@@ -247,7 +281,7 @@ button {
 }
 
 .screen-popup .card {
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 24px 60px rgba(8, 10, 24, 0.5);
 }
 
 /* ---------- Hero logo (title screen) ---------- */
@@ -257,11 +291,14 @@ button {
   object-fit: contain;
   margin: 0 auto 4px;
   display: block;
-  filter: drop-shadow(0 10px 26px rgba(108, 92, 231, 0.55));
+  filter: drop-shadow(0 10px 26px rgba(62, 198, 224, 0.45));
   animation: float-avatar 4s ease-in-out infinite;
 }
 
-/* ---------- Typography blocks ---------- */
+/* ---------- Typography blocks ----------
+   These defaults are the ON-DARK case: the title, challenge-intro and finale
+   screens set type straight onto the image backgrounds. The .card overrides
+   further down re-point them at the on-light inks. */
 .eyebrow {
   color: var(--accent);
   font-weight: 700;
@@ -277,18 +314,42 @@ button {
 }
 
 .subtitle {
-  color: var(--muted);
+  color: var(--on-dark-muted);
   font-size: 17px;
   max-width: 320px;
 }
 
-/* ---------- Card ---------- */
+/* One-line expectation setter above the title CTA. Sits over the hero
+   image, so it takes the on-dark muted ink, not --muted. */
+.title-cue {
+  color: var(--on-dark-muted);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  max-width: 330px;
+  text-wrap: balance;
+}
+
+/* ---------- Card ----------
+   The light content surface. Setting `color` here is what flips every
+   descendant to dark type, so nothing inside a card inherits the on-dark
+   body colour and disappears. */
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 20px;
   box-shadow: var(--shadow);
+  color: var(--ink);
+}
+
+/* On a light card, gold type is ~1.7:1 — swap in the ink-weight golds. */
+.card .eyebrow {
+  color: var(--accent-ink);
+}
+
+.card .subtitle {
+  color: var(--muted);
 }
 
 .card p {
@@ -319,14 +380,15 @@ button {
   transform: scale(0.97);
 }
 
+/* Gold stays the primary CTA, with navy type on it (~8.9:1). */
 .btn-amber {
   background: linear-gradient(180deg, var(--accent), var(--accent-2));
-  color: #241a08;
-  box-shadow: 0 10px 24px rgba(217, 169, 84, 0.3);
+  color: var(--brand);
+  box-shadow: 0 10px 24px rgba(255, 194, 75, 0.28);
 }
 
 .btn-amber:hover {
-  box-shadow: 0 14px 30px rgba(217, 169, 84, 0.45);
+  box-shadow: 0 14px 30px rgba(255, 194, 75, 0.42);
 }
 
 .btn-amber:disabled {
@@ -341,10 +403,12 @@ button {
   box-shadow: none;
 }
 
+/* Ghost buttons only ever sit on the dark backgrounds (finale, score
+   gutter), so they keep light type. */
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--line);
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--on-dark);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), background 150ms ease, border-color 150ms ease;
@@ -352,8 +416,8 @@ button {
 
 .btn-ghost:hover {
   transform: translateY(-2px) scale(1.015);
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--brand-2);
+  background: rgba(255, 255, 255, 0.13);
 }
 
 .option-list {
@@ -362,19 +426,20 @@ button {
   gap: 10px;
 }
 
+/* Light answer tiles with dark type. */
 .option-btn {
   min-height: 56px;
   width: 100%;
   border-radius: 14px;
   border: 1px solid var(--line);
-  background: var(--surface-2);
+  background: var(--surface);
   color: var(--ink);
   text-align: left;
   padding: 14px 16px;
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, transform 120ms ease;
+  transition: background 150ms ease, border-color 150ms ease, transform 120ms ease, box-shadow 150ms ease;
 }
 
 .option-btn:hover {
@@ -385,18 +450,21 @@ button {
   transform: scale(0.98);
 }
 
+/* Teal marks the chosen answer; the inset ring reads as "picked" without
+   relying on the fill alone. */
 .option-btn.selected {
-  background: rgba(139, 124, 255, 0.16);
+  background: var(--teal-tint);
   border-color: var(--brand-2);
+  box-shadow: inset 0 0 0 1px var(--brand-2);
 }
 
 .option-btn.correct {
-  background: rgba(52, 211, 153, 0.18);
+  background: var(--good-tint);
   border-color: var(--good);
 }
 
 .option-btn.wrong {
-  background: rgba(251, 113, 133, 0.14);
+  background: var(--bad-tint);
   border-color: var(--bad);
 }
 
@@ -468,8 +536,8 @@ button {
 }
 
 @keyframes ring-pulse {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(229, 100, 111, 0)); }
-  50% { filter: drop-shadow(0 0 6px rgba(229, 100, 111, 0.7)); }
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(251, 113, 133, 0)); }
+  50% { filter: drop-shadow(0 0 6px rgba(251, 113, 133, 0.7)); }
 }
 
 .timer-ring-num {
@@ -507,11 +575,14 @@ button {
   display: block;
 }
 
+/* Both chips sit over the product photo. White on the light --bad pink is
+   only 2.7:1, so the badge takes the deeper red (5.3:1 on white); the timer
+   gets an opaque navy chip with a light pink numeral instead of the reverse. */
 .shop-badge {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: var(--bad);
+  background: var(--bad-ink);
   color: #fff;
   font-weight: 700;
   font-size: 12px;
@@ -524,8 +595,8 @@ button {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(0, 0, 0, 0.6);
-  color: var(--bad);
+  background: rgba(8, 10, 24, 0.82);
+  color: #ff9daa;
   font-weight: 700;
   font-size: 12px;
   padding: 4px 8px;
@@ -551,13 +622,13 @@ button {
 }
 
 .shop-price {
-  color: var(--good);
+  color: var(--good-ink);
   font-weight: 800;
   font-size: 20px;
 }
 
 .shop-stars {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 13px;
   letter-spacing: 1px;
 }
@@ -582,43 +653,107 @@ button {
   color: var(--ink);
 }
 
+/* ---------- Honest question · answer → acknowledgement ----------
+   The question card recedes upward once the answer is confirmed... */
+#wq-question {
+  transition: opacity 200ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#wq-question.leaving {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+  pointer-events: none;
+}
+
+/* ...and this card takes its place. Same .card.glass-tile chrome as every
+   other card in the app, but it carries a message rather than a choice, so
+   it never lifts or squashes under a cursor or tap — nothing about it
+   invites being picked. The entrance animates `translate` rather than
+   `transform`, so it can't collide with the .glass-tile hover rule that
+   the two lines below deliberately neutralise. */
+.ack-card {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  opacity: 0;
+  translate: 0 12px;
+  transition: opacity 320ms ease, translate 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ack-card.visible {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* .glass-tile's hover rule (a lift, a scale, a violet ring) is declared
+   later in this file and ties this one on specificity, so a card that only
+   carries a message has to outrank it explicitly. These values are the
+   card's resting look: the border from .glass-tile, the shadow from
+   .screen-popup .card. */
+.screen-popup .ack-card:hover,
+.screen-popup .ack-card:active {
+  transform: none;
+  border-color: var(--line);
+  box-shadow: 0 24px 60px rgba(8, 10, 24, 0.5);
+}
+
+/* .card p sets a bottom margin — outspecify it and let the flex gap space. */
+.ack-card .ack-card-text {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+/* .screen-content pads 84px at the top to clear the top bar but only 28px at
+   the bottom, so anything centred in it lands 28px below the optical middle.
+   That reads as "floating low" once the card is short, so this state pads
+   evenly instead. 28px both ways rather than 84px both ways keeps the total
+   height down — the card is far too short to ever reach the top bar. */
+.screen-popup > .screen-content.ack-centered {
+  padding-top: 28px;
+  padding-bottom: 28px;
+}
+
+/* Captions appear in both contexts: the challenge screens set them straight
+   onto the dark background, the score card sets them on light. */
 .reveal-caption {
   font-size: 14px;
+  color: var(--on-dark-muted);
+}
+
+.card .reveal-caption,
+.mission-card .reveal-caption,
+.shop-card .reveal-caption {
   color: var(--muted);
 }
 
 /* ---------- Score screen ---------- */
+/* Wraps freely — the score line is now a sentence, not a fraction. */
 .score-big {
   font-family: "Fraunces", Georgia, serif;
   font-weight: 700;
-  font-size: 34px;
-  white-space: nowrap;
+  font-size: 27px;
+  line-height: 1.18;
+  text-wrap: balance;
 }
 
 .score-headline {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
   font-size: 20px;
 }
 
-.skill-row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 14px;
-  cursor: pointer;
-  transition: border-color 150ms ease, transform 120ms ease;
-}
-
-.skill-row:active {
-  transform: scale(0.98);
-}
-
-.skill-row:hover {
-  border-color: var(--brand-2);
+/* Sits in the gutter between cards — teal on navy is ~6.5:1. */
+.recap-label {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--brand-2);
+  margin-top: 2px;
 }
 
 .skill-icon {
@@ -629,8 +764,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(139, 124, 255, 0.14);
-  color: var(--brand-2);
+  background: var(--teal-tint);
+  color: var(--teal-ink);
 }
 
 .skill-icon svg {
@@ -642,7 +777,7 @@ button {
   width: 40px;
   height: 40px;
   margin: 0 auto 10px;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .score-icon svg {
@@ -655,22 +790,170 @@ button {
   font-size: 15px;
 }
 
-.skill-subject {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
 .skill-line {
   color: var(--muted);
   font-size: 14px;
   margin-top: 2px;
 }
 
-.footer-note {
+/* ---------- Mission card — inline reveal + score-screen recap ----------
+   Its own light surface rather than .glass-tile: the shared tile's
+   hover/tap lift fights an expanding panel, and this card needs a steady
+   frame while its body grows. */
+.mission-slot {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 320ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mission-slot:empty {
+  display: none;
+}
+
+.mission-slot.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mission-card {
+  position: relative;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(11, 14, 33, 0.2);
+  overflow: hidden;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.mission-card:hover {
+  border-color: var(--brand-2);
+}
+
+.mission-card.expanded {
+  border-color: var(--brand-2);
+  box-shadow: 0 12px 26px rgba(11, 14, 33, 0.24), 0 0 0 1px rgba(62, 198, 224, 0.35);
+}
+
+.mission-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mission-head:active {
+  transform: scale(0.99);
+}
+
+.mission-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mission-eyebrow {
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.mission-hint {
+  color: var(--teal-ink);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 5px;
+}
+
+.mission-card.expanded .mission-hint {
+  display: none;
+}
+
+.mission-chevron {
+  flex-shrink: 0;
   color: var(--muted);
+  margin-top: 12px;
+}
+
+.mission-chevron .icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 240ms ease;
+}
+
+.mission-card.expanded .mission-chevron .icon {
+  transform: rotate(180deg);
+}
+
+/* 0fr → 1fr animates the panel open without measuring its height in JS. */
+.mission-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mission-card.expanded .mission-body {
+  grid-template-rows: 1fr;
+}
+
+.mission-detail {
+  overflow: hidden;
+}
+
+.mission-detail-inner {
+  margin: 0 14px 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.mission-detail-label {
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.mission-detail-text {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Recap variant on the score screen — same card, quieter. */
+.mission-card--compact .mission-head {
+  padding: 12px;
+}
+
+.mission-card--compact .skill-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.mission-card--compact .skill-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.mission-card--compact .mission-chevron {
+  margin-top: 9px;
+}
+
+/* In the gutter below the recap cards, on the dark background. */
+.footer-note {
+  color: var(--on-dark-muted);
   font-size: 13px;
   text-align: center;
 }
@@ -699,36 +982,46 @@ button {
   }
 }
 
-/* ---------- Glass tiles — premium glassmorphism + hover/tap bulge ----------
-   Placed after the component base styles below (in source order) so its
-   translucent background/transition win the cascade on shared properties. */
+/* ---------- Light tiles — the shared card skin + hover/tap bulge ----------
+   Placed after the component base styles above (in source order) so its
+   surface/transition win the cascade on shared properties. Note the
+   background is no longer !important: state classes like .selected and
+   .correct are single-class rules that could never outrank an !important
+   base, which is why selecting a Challenge-2 option used to change only
+   its border. Plain source order lets those states through. */
 .glass-tile {
   position: relative;
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 8px 24px rgba(0, 0, 0, 0.28);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(36, 42, 82, 0.05), 0 8px 22px rgba(11, 14, 33, 0.2);
   transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease, border-color 200ms ease,
     background 200ms ease;
 }
 
 .glass-tile:hover {
   transform: translateY(-3px) scale(1.025);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.22) inset, 0 16px 34px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 124, 255, 0.25);
+  border-color: var(--brand-2);
+  box-shadow: 0 14px 30px rgba(11, 14, 33, 0.26), 0 0 0 1px rgba(62, 198, 224, 0.35);
 }
 
 .glass-tile:active {
   transform: translateY(-1px) scale(0.985);
 }
 
+.glass-tile.selected {
+  background: var(--teal-tint);
+  border-color: var(--brand-2);
+}
+
 .glass-tile.correct {
-  background: linear-gradient(155deg, rgba(52, 211, 153, 0.28), rgba(52, 211, 153, 0.08)) !important;
+  background: var(--good-tint);
+  border-color: var(--good);
 }
 
 .glass-tile.wrong {
-  background: linear-gradient(155deg, rgba(251, 113, 133, 0.22), rgba(251, 113, 133, 0.06)) !important;
+  background: var(--bad-tint);
+  border-color: var(--bad);
 }
 
 .glass-tile.correct,
@@ -809,13 +1102,14 @@ button {
   color: var(--muted);
 }
 
+/* Inputs sit inside light cards — white wells with a hairline. */
 .field input,
 .field select {
   width: 100%;
   min-height: 48px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.05);
+  background: #ffffff;
   color: var(--ink);
   padding: 0 14px;
   font-family: inherit;
@@ -826,7 +1120,7 @@ button {
 .field select {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9db8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 16px;
@@ -851,7 +1145,7 @@ button {
 .field select:focus {
   outline: none;
   border-color: var(--brand-2);
-  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(62, 198, 224, 0.22);
 }
 
 .phone-input-wrap {
@@ -859,14 +1153,14 @@ button {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #ffffff;
   overflow: hidden;
-  transition: border-color 150ms ease, background 150ms ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .phone-input-wrap:focus-within {
   border-color: var(--brand-2);
-  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(62, 198, 224, 0.22);
 }
 
 .phone-prefix {
@@ -892,12 +1186,13 @@ button {
   color: var(--muted);
 }
 
+/* Ink-weight variants: 12px type on a light card. */
 .field-hint.invalid {
-  color: var(--bad);
+  color: var(--bad-ink);
 }
 
 .field-hint.valid {
-  color: var(--good);
+  color: var(--good-ink);
 }
 
 /* ---------- Mission map sheet ---------- */
@@ -912,19 +1207,22 @@ button {
 }
 
 .mm-overlay.open {
-  background: rgba(5, 6, 15, 0.6);
+  background: rgba(11, 14, 33, 0.62);
 }
 
+/* The mission list and phone gate are content sheets, so they're light like
+   the cards — every descendant below inherits --ink from here. */
 .mm-sheet {
   width: 100%;
   max-height: 88%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, var(--bg-2), var(--bg));
+  background: var(--surface);
+  color: var(--ink);
   border: 1px solid var(--line);
   border-bottom: none;
   border-radius: 24px 24px 0 0;
-  box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 -20px 50px rgba(8, 10, 24, 0.45);
   transform: translateY(100%);
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -961,7 +1259,7 @@ button {
   height: 32px;
   border-radius: 50%;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-2);
   color: var(--ink);
   display: flex;
   align-items: center;
@@ -1042,7 +1340,7 @@ button {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--accent);
+  color: var(--accent-ink);
   margin-bottom: 6px;
 }
 
@@ -1073,8 +1371,8 @@ button {
 }
 
 .mm-tag-group {
-  color: var(--brand-2);
-  border-color: rgba(139, 124, 255, 0.4);
+  color: var(--teal-ink);
+  border-color: rgba(62, 198, 224, 0.55);
 }
 
 .mm-skill {
@@ -1094,7 +1392,8 @@ button {
   overflow: hidden;
   background-size: cover;
   background-position: center;
-  background-image: linear-gradient(180deg, rgba(10, 11, 35, 0.55), rgba(10, 11, 35, 0.88)), var(--ambient-url);
+  /* Matches .screen-bg-ambient — the kid game is a content screen too. */
+  background-image: linear-gradient(180deg, rgba(var(--bg-rgb), 0.82), rgba(var(--bg-2-rgb), 0.9)), var(--ambient-url);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--fade) ease;
@@ -1127,9 +1426,10 @@ button {
   cursor: pointer;
 }
 
+/* Sits on the dark background above the card deck. */
 .kg-progress {
   text-align: center;
-  color: var(--muted);
+  color: var(--on-dark-muted);
   font-size: 12px;
   font-weight: 600;
 }
@@ -1226,7 +1526,7 @@ button {
   padding: 12px 8px;
   border-radius: 14px;
   border: 1px solid var(--line);
-  background: var(--surface-2);
+  background: var(--surface);
   color: var(--ink);
   font-family: inherit;
   font-size: 12px;
@@ -1244,31 +1544,33 @@ button {
   height: 20px;
 }
 
+/* Ink-weight variants: these are type on a light tile, not fills. */
 .kg-action-fake {
-  color: var(--bad);
+  color: var(--bad-ink);
 }
 
 .kg-action-real {
-  color: var(--good);
+  color: var(--good-ink);
 }
 
 .kg-action-confused {
-  color: var(--warn);
+  color: var(--accent-ink);
 }
 
 .kg-action-btn.selected {
   border-color: currentColor;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px currentColor;
 }
 
 .kg-action-btn.correct {
   border-color: var(--good);
-  background: rgba(52, 211, 153, 0.18);
+  background: var(--good-tint);
 }
 
 .kg-action-btn.wrong {
   border-color: var(--bad);
-  background: rgba(251, 113, 133, 0.14);
+  background: var(--bad-tint);
 }
 
 .kg-action-btn:disabled,
@@ -1317,11 +1619,11 @@ button {
 }
 
 .kg-reveal-tag.fake {
-  color: var(--bad);
+  color: var(--bad-ink);
 }
 
 .kg-reveal-tag.real {
-  color: var(--good);
+  color: var(--good-ink);
 }
 
 .kg-reveal-note {
@@ -1354,7 +1656,7 @@ button {
 }
 
 .kg-mark.muted {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-2);
   color: var(--muted);
 }
 
@@ -1368,8 +1670,9 @@ button {
   gap: 10px;
 }
 
+/* Only used on the finale, over the image background. */
 .link-text {
-  color: var(--muted);
+  color: var(--on-dark-muted);
   font-size: 13px;
   text-align: center;
   text-decoration: underline;

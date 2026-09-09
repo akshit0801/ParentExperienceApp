@@ -19,8 +19,9 @@ const ASSETS = {
 const TITLE = {
   title: "Could You Pass Your Kid's Class?",
   subtitle:
-    "Your child's classroom now runs on AI. Take the 3-minute challenge — see if you could keep up.",
+    "Your child's classroom now runs on AI. Take the 3-minute tour and see what they're really learning.",
   cta: "Take the challenge",
+  cue: "3 questions · 3 real missions from their class · 3 minutes",
 };
 
 // ---- Screen 1 · Parent details (capture #1) -----------------------------
@@ -50,8 +51,9 @@ const WORRY_Q = {
     { id: "C", label: "Is their school actually teaching the right things?" },
     { id: "D", label: "Honestly… I try not to think about it." },
   ],
-  ack: "You're not alone — most parents pick that too.",
+  ack: "You're not alone. Most parents pick that too.",
   cta: "Continue",
+  ackCta: "Let's take a look",
 };
 
 // ---- Screen 3 · "Take Challenge 1" interstitial --------------------------
@@ -98,10 +100,14 @@ const CHALLENGE1 = {
   aha: "Even adults get this ~50/50 — a coin flip. Your child trains to spot the tells.",
   missionLink: {
     iconKey: "eye",
+    name: "Deepfake Detector",
     title: "Challenge 1 → “Deepfake Detector”",
     subject: "AI & media literacy",
     line: "Your child trains an AI to tell real from fake.",
+    detail:
+      "They feed an AI model real photos and AI-made ones, then test it on pictures it has never seen. When it gets one wrong, they work out which tell it missed — the lighting, the skin texture, the too-tidy background — and retrain it until it catches that tell every time.",
   },
+  nextCta: "Next challenge →",
 };
 
 // ---- Screen 5 · Challenge 2 · Spot the Trap (capture #4) -----------------
@@ -128,21 +134,40 @@ const CHALLENGE2 = {
   cta: "Confirm answer",
   missionLink: {
     iconKey: "search",
+    name: "Price Detective",
     title: "Challenge 2 → “Price Detective”",
     subject: "Data & digital literacy",
     line: "Your child uses real data to expose fake deals and false claims.",
+    detail:
+      "They track one product's price over days, log what the “MRP” and the countdown actually do, and chart it. The data does the arguing: they end up with proof that the discount was staged — and a habit of asking for the numbers before believing the offer.",
   },
+  nextCta: "See your result →",
 };
 
-// ---- Screen 6 · The reveal — score + skill map --------------------------
+// ---- Mission reveal card — shown right after each challenge, and again as
+// a recap on the score screen. Collapsed it names the mission; tapping it
+// opens what the child actually does in that mission. ----------------------
+const MISSION_REVEAL = {
+  eyebrow: "That was Mission",
+  detailLabel: "What your child actually does in this mission",
+  hint: "Tap to see what they do →",
+};
+
+// ---- Screen 6 · The recap — score + the two missions they just met -------
+// No average, no denominator: the score is a count of what they caught, not
+// a mark out of something. Every band headline has to be warm at any score.
 const SCORE_BANDS = [
-  { min: 0, max: 2, headline: "Tricky, isn't it?" },
-  { min: 3, max: 4, headline: "Sharp." },
-  { min: 5, max: 5, headline: "Rare — you'd fit right in." },
+  { min: 0, max: 0, headline: "These are built to be missed — that's the point." },
+  { min: 1, max: 2, headline: "You caught the kind of thing most of us walk past." },
+  { min: 3, max: 4, headline: "Nice spotting — you're paying attention." },
+  { min: 5, max: 5, headline: "Excellent — great eye!" },
 ];
-const SCORE_MAX = 5;
+const SCORE_MAX = 5; // 4 images in Challenge 1 + 1 in Challenge 2 — sets the band ranges above
+const SCORE_LINE = "You spotted {n} of the AI's tricks.";
 const SCORE_REASSURANCE =
-  "Most parents get 2 out of 5. That's exactly why this classroom exists.";
+  "AI is built to fool adults — that's the whole point. Your child trains to catch what most of us miss.";
+const SCORE_RECAP_LABEL = "The two missions behind those tricks";
+const SCORE_MISSIONS_CTA = "See all the missions";
 const SKILL_MAP_FOOTER =
   "2 of 16 missions your child does across AI, STEM, Data, and Entrepreneurship.";
 
@@ -160,7 +185,8 @@ const REFLECTION_Q = {
 
 // ---- Screen 8 · Close ----------------------------------------------------
 const CLOSE = {
-  headline: "You were taught to memorise. They're being taught to think — with the machine.",
+  headline:
+    "You spotted the tricks. Your child is learning to spot them every time — and you'll be the reason they can.",
   sub: "That's the gap this classroom closes. And now you've felt it too.",
   ctaPrimary: "See the full mission list",
   ctaSecondary: "Your child's turn",
